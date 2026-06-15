@@ -1,0 +1,400 @@
+import React, { useState, useContext } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { DataContext } from '../context/DataContext';
+
+export default function SubZonalAudit() {
+  const { currentUser, CL_TASKS, db, setDb, resolveComplaint } = useContext(DataContext);
+  const [checkedItems, setCheckedItems] = useState([]);
+  
+  const [resolutions, setResolutions] = useState({});
+  const [photoProofs, setPhotoProofs] = useState({});
+
+  const pickImage = async (complaintId) => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setPhotoProofs({...photoProofs, [complaintId]: result.assets[0].uri});
+    }
+  };
+
+  // Mock finding the Sub-Zonal Head's assigned zone info based on currentUser ID
+  // In a real app, currentUser.data would contain this directly.
+  const myZone = currentUser?.id === 'SZH_F1' ? 'Zone 1 – Anviksha' : 'All Zones';
+
+  const myComplaints = db.complaints.filter(c => c.zone === myZone || c.zone.includes('Zone 1'));
+
+  const toggleCheck = (index) => {
+    if (checkedItems.includes(index)) {
+      setCheckedItems(checkedItems.filter(i => i !== index));
+    } else {
+      setCheckedItems([...checkedItems, index]);
+    }
+  };
+
+  const progressPercentage = Math.round((checkedItems.length / CL_TASKS.length) * 100);
+
+  const handleSubmit = () => {
+    if (checkedItems.length === 0) {
+      Alert.alert('Incomplete', 'Please check at least one inspection item.');
+      return;
+    }
+
+    const newSubmission = {
+      id: Date.now().toString(),
+      subZonalHeadId: currentUser?.id,
+      zone: myZone,
+      score: progressPercentage,
+      date: new Date().toLocaleString()
+    };
+
+    setDb(prev => ({
+      ...prev,
+      checklistSubmissions: [newSubmission, ...prev.checklistSubmissions]
+    }));
+
+    Alert.alert('Audit Submitted', `Daily inspection complete. Score: ${progressPercentage}%`);
+    setCheckedItems([]);
+  };
+
+  return (
+    <ScrollView style={styles.container}>
+      {/* Header Info */}
+      <View style={styles.headerSection}>
+        <Text style={styles.headName}>Sub-Zonal Head: {currentUser?.name || 'Mr. Rajesh Patel'}</Text>
+        <Text style={styles.zoneTitle}>{myZone} — Ground Floor</Text>
+      </View>
+
+      {/* Checklist Card */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>📋 Daily 6S Inspection</Text>
+        <Text style={styles.cardSubtitle}>Complete your daily floor checklist to maintain compliance.</Text>
+
+        {/* Progress Bar */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressTextRow}>
+            <Text style={styles.progressLabel}>Completion Status</Text>
+            <Text style={styles.progressValue}>{progressPercentage}%</Text>
+          </View>
+          <View style={styles.progressBarBackground}>
+            <View style={[styles.progressBarFill, { width: `${progressPercentage}%`, backgroundColor: progressPercentage === 100 ? '#1A8C4E' : '#B07D10' }]} />
+          </View>
+        </View>
+
+        {/* 8-Item Checklist */}
+        <View style={styles.checklistContainer}>
+          {CL_TASKS.map((task, index) => {
+            const isChecked = checkedItems.includes(index);
+            return (
+              <TouchableOpacity 
+                key={index} 
+                style={[styles.checklistItem, isChecked && styles.checklistItemActive]}
+                onPress={() => toggleCheck(index)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkbox, isChecked && styles.checkboxActive]}>
+                  {isChecked && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+                </View>
+                <Text style={[styles.checklistText, isChecked && styles.checklistTextActive]}>{task}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <TouchableOpacity 
+          style={[styles.primaryButton, checkedItems.length === 0 && { opacity: 0.6 }]} 
+          onPress={handleSubmit}
+        >
+          <Text style={styles.primaryButtonText}>Submit Daily Log</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Floor Concerns (Card 3) */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>🚨 My Floor Concerns</Text>
+        <Text style={styles.cardSubtitle}>Complaints submitted by students regarding your specific floor.</Text>
+        {myComplaints.length === 0 ? (
+          <Text style={styles.mutedText}>No active concerns for your floor.</Text>
+        ) : (
+          myComplaints.map(c => (
+            <View key={c.id} style={styles.complaintRow}>
+              <View style={styles.complaintHeader}>
+                <View style={[styles.complaintStatus, c.status === 'Resolved' && styles.complaintStatusResolved]}>
+                  <Text style={[styles.complaintStatusText, c.status === 'Resolved' && styles.complaintStatusTextResolved]}>{c.status}</Text>
+                </View>
+                <Text style={styles.complaintTime}>{c.date}</Text>
+              </View>
+              <Text style={styles.complaintDesc}>{c.desc}</Text>
+              
+              {c.status === 'Pending' && (
+                <View style={styles.resolveContainer}>
+                  <TextInput 
+                    style={styles.resolveInput}
+                    placeholder="Write resolution remark..."
+                    value={resolutions[c.id] || ''}
+                    onChangeText={(val) => setResolutions({...resolutions, [c.id]: val})}
+                  />
+                  <View style={styles.resolveActions}>
+                    <TouchableOpacity 
+                      style={[styles.attachBtn, photoProofs[c.id] && styles.attachBtnActive]}
+                      onPress={() => pickImage(c.id)}
+                    >
+                      <Ionicons name={photoProofs[c.id] ? "image" : "image-outline"} size={16} color={photoProofs[c.id] ? "#FFFFFF" : "#C4933F"} />
+                      <Text style={[styles.attachBtnText, photoProofs[c.id] && styles.attachBtnTextActive]}>Photo Proof</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                      style={styles.resolveSubmitBtn}
+                      onPress={() => {
+                        if(!resolutions[c.id]) {
+                          Alert.alert('Error', 'Please enter a resolution remark.');
+                          return;
+                        }
+                        resolveComplaint(c.id, resolutions[c.id], photoProofs[c.id] || null);
+                        Alert.alert('Success', 'Concern resolved successfully.');
+                      }}
+                    >
+                      <Text style={styles.resolveSubmitText}>Mark Resolved</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
+          ))
+        )}
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FBF7F2',
+    padding: 16,
+  },
+  headerSection: {
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  headName: {
+    fontSize: 14,
+    color: '#4B5563',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  zoneTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#8C1B2F',
+    fontFamily: 'serif',
+    marginTop: 4,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#1C0A0E',
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#8C1B2F',
+    marginBottom: 6,
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    color: '#7A4050',
+    marginBottom: 20,
+    lineHeight: 18,
+  },
+  progressContainer: {
+    marginBottom: 20,
+  },
+  progressTextRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  progressLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1C0A0E',
+  },
+  progressValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#8C1B2F',
+  },
+  progressBarBackground: {
+    height: 8,
+    backgroundColor: '#F5EFE6',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  checklistContainer: {
+    marginBottom: 20,
+  },
+  checklistItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FBF7F2',
+    padding: 14,
+    borderRadius: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(140,27,47,0.1)',
+  },
+  checklistItemActive: {
+    backgroundColor: 'rgba(26,140,78,0.05)',
+    borderColor: '#1A8C4E',
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#C4933F',
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  checkboxActive: {
+    backgroundColor: '#1A8C4E',
+    borderColor: '#1A8C4E',
+  },
+  checklistText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 20,
+  },
+  checklistTextActive: {
+    color: '#1C0A0E',
+    fontWeight: '500',
+  },
+  primaryButton: {
+    backgroundColor: '#8C1B2F',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  mutedText: {
+    color: '#A0A0A0',
+    fontSize: 13,
+    fontStyle: 'italic',
+  },
+  complaintRow: {
+    backgroundColor: '#FBF7F2',
+    padding: 14,
+    borderRadius: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(140,27,47,0.12)',
+  },
+  complaintHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  complaintStatus: {
+    backgroundColor: 'rgba(176,125,16,0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  complaintStatusResolved: {
+    backgroundColor: 'rgba(26,140,78,0.1)',
+  },
+  complaintStatusText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#B07D10',
+  },
+  complaintStatusTextResolved: {
+    color: '#1A8C4E',
+  },
+  complaintTime: {
+    fontSize: 11,
+    color: '#7A4050',
+  },
+  complaintDesc: {
+    fontSize: 14,
+    color: '#1C0A0E',
+    lineHeight: 20,
+  },
+  resolveContainer: {
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F5EFE6',
+    paddingTop: 12,
+  },
+  resolveInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(140,27,47,0.22)',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 13,
+    marginBottom: 8,
+  },
+  resolveActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  attachBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#C4933F',
+  },
+  attachBtnActive: {
+    backgroundColor: '#C4933F',
+  },
+  attachBtnText: {
+    fontSize: 12,
+    color: '#C4933F',
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  attachBtnTextActive: {
+    color: '#FFFFFF',
+  },
+  resolveSubmitBtn: {
+    backgroundColor: '#1A8C4E',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  resolveSubmitText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  }
+});

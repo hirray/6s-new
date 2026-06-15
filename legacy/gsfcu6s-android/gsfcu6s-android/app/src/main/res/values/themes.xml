@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Base app theme -->
+    <style name="Theme.GSFCU6S" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/maroon</item>
+        <item name="colorPrimaryVariant">@color/maroon3</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/gold</item>
+        <item name="colorSecondaryVariant">@color/gold2</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="android:colorBackground">@color/cream</item>
+        <item name="android:statusBarColor">@color/maroon3</item>
+        <item name="android:navigationBarColor">@color/maroon3</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <!-- Splash screen theme — full screen maroon -->
+    <style name="Theme.GSFCU6S.Splash" parent="Theme.GSFCU6S">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:statusBarColor">@color/maroon3</item>
+        <item name="android:navigationBarColor">@color/maroon3</item>
+        <item name="android:windowBackground">@color/maroon3</item>
+    </style>
+
+    <!-- Dialog style -->
+    <style name="Theme.GSFCU6S.Dialog" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
+        <item name="colorPrimary">@color/maroon</item>
+        <item name="buttonBarPositiveButtonStyle">@style/GsfcuButton.Dialog</item>
+        <item name="buttonBarNegativeButtonStyle">@style/GsfcuButton.Dialog.Outline</item>
+    </style>
+
+    <style name="GsfcuButton.Dialog" parent="Widget.MaterialComponents.Button">
+        <item name="backgroundTint">@color/maroon</item>
+        <item name="android:textColor">@color/white</item>
+    </style>
+
+    <style name="GsfcuButton.Dialog.Outline" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="strokeColor">@color/maroon</item>
+        <item name="android:textColor">@color/maroon</item>
+    </style>
+
+</resources>

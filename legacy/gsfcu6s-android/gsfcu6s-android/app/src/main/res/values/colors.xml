@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- GSFCU Brand Colors -->
+    <color name="maroon">#8C1B2F</color>
+    <color name="maroon2">#6E1424</color>
+    <color name="maroon3">#4D0D19</color>
+    <color name="maroon_light">#B02640</color>
+    <color name="maroon_dim">#198C1B2F</color>
+
+    <color name="gold">#C4933F</color>
+    <color name="gold2">#A87830</color>
+    <color name="gold_light">#E2B96A</color>
+
+    <color name="cream">#FBF7F2</color>
+    <color name="cream2">#F5EFE6</color>
+    <color name="cream3">#EDE4D6</color>
+
+    <color name="dark">#1C0A0E</color>
+    <color name="slate">#4A2030</color>
+    <color name="muted">#7A4050</color>
+    <color name="white">#FFFFFF</color>
+
+    <!-- Status colors -->
+    <color name="status_green">#1A8C4E</color>
+    <color name="status_yellow">#B07D10</color>
+    <color name="status_red">#C0182A</color>
+
+    <!-- System UI -->
+    <color name="colorPrimary">#8C1B2F</color>
+    <color name="colorPrimaryDark">#4D0D19</color>
+    <color name="colorAccent">#C4933F</color>
+</resources>

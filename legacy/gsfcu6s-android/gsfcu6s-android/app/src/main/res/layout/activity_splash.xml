@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@color/maroon3"
+    android:padding="40dp">
+
+    <!-- Animated logo container -->
+    <LinearLayout
+        android:id="@+id/logoContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <!-- Gold icon box -->
+        <LinearLayout
+            android:layout_width="90dp"
+            android:layout_height="90dp"
+            android:background="@drawable/splash_icon_bg"
+            android:gravity="center"
+            android:elevation="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🏛"
+                android:textSize="44sp"/>
+        </LinearLayout>
+
+        <!-- University name -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="GSFC University"
+            android:textColor="#FFFFFF"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:fontFamily="serif"
+            android:gravity="center"/>
+
+        <!-- 6S Monitor label -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="6S Monitor"
+            android:textColor="@color/gold_light"
+            android:textSize="18sp"
+            android:fontFamily="serif"
+            android:gravity="center"/>
+
+        <!-- Gold divider line -->
+        <View
+            android:layout_width="60dp"
+            android:layout_height="2dp"
+            android:layout_marginTop="20dp"
+            android:background="@color/gold"/>
+
+    </LinearLayout>
+
+    <!-- Tagline -->
+    <TextView
+        android:id="@+id/tagline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:text="Campus Compliance Management"
+        android:textColor="#99FFFFFF"
+        android:textSize="14sp"
+        android:letterSpacing="0.08"
+        android:gravity="center"/>
+
+    <!-- Version tag -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Education Re-Envisioned"
+        android:textColor="#55FFFFFF"
+        android:textSize="11sp"
+        android:gravity="center"/>
+
+    <!-- Bottom loading indicator -->
+    <ProgressBar
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginTop="60dp"
+        android:indeterminateTint="@color/gold"
+        style="?android:attr/progressBarStyle"/>
+
+</LinearLayout>
