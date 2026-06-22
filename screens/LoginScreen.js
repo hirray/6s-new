@@ -62,6 +62,8 @@ export default function LoginScreen() {
       login({ role: 'SubZonalHead', id: 'SZH_F1', name: 'Mr. Rajesh Patel' });
     } else if ((id === 'student' || id === 'student@gsfc.edu') && pass === 'student') {
       login({ role: 'Student', id: 'STU_1', name: 'Test Student' });
+    } else if (id === '24bt04d224@gsfcuniversity.ac.in') {
+      login({ role: 'Student', id: 'STU_1', name: 'Hirra' });
     } else if (id.startsWith('zone') && pass.startsWith('zone')) {
       const zoneNumber = parseInt(id.replace('zone', ''), 10);
       if (zoneNumber >= 1 && zoneNumber <= 8) {
