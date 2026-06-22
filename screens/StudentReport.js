@@ -639,7 +639,7 @@ export default function StudentReport({ navigation }) {
             style={[styles.fabButton, activeTab === 'reports' && styles.fabButtonActive]} 
             onPress={() => { setActiveTab('reports'); setSelectedReport(null); }}
           >
-            <Ionicons name="add" size={32} color={activeTab === 'reports' ? "#611624" : "#8C1B2F"} />
+            <Ionicons name="document-text" size={28} color={activeTab === 'reports' ? "#611624" : "#8C1B2F"} />
           </TouchableOpacity>
         </View>
 
@@ -935,57 +935,54 @@ const styles = StyleSheet.create({
   },
   bottomBarContainer: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 80,
+    bottom: 20,
+    left: 20,
+    right: 20,
+    height: 70,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    backgroundColor: 'transparent',
+    backgroundColor: '#611624',
+    borderRadius: 35,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 15,
+    elevation: 10,
+    paddingHorizontal: 10,
   },
   bottomBarBackground: {
-    position: 'absolute',
-    top: 20,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#611624',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    display: 'none',
   },
   navItem: {
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
     height: '100%',
-    paddingTop: 20,
   },
   fabContainer: {
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     flex: 1,
     height: '100%',
     zIndex: 10,
   },
   fabButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: -28, // Pops out of the top of the floating bar
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 5,
     elevation: 5,
-    borderWidth: 4,
-    borderColor: '#FBF7F2',
   },
   fabButtonActive: {
-    borderColor: '#FFFFFF',
+    backgroundColor: '#F3E9DD',
   },
   reportsContainer: {
     flex: 1,
