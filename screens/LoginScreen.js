@@ -2,6 +2,9 @@ import React, { useContext, useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Dimensions, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../context/DataContext';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { auth } from '../firebaseConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -17,6 +20,61 @@ export default function LoginScreen() {
 
   // Micro-interaction animation for the login button
   const buttonScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: '659444199187-m32f5r56tsna27ch4dep1jg5sa7nuo2t.apps.googleusercontent.com',
+    });
+  }, []);
+
+  const handleGoogleLogin = async () => {
+    try {
+      setErrorText('');
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      
+      // Force account picker every time by signing out first
+      try {
+        await GoogleSignin.signOut();
+      } catch (e) {
+        // Ignore errors if the user wasn't signed in previously
+      }
+
+      // Depending on the version of google-signin, the result might be different.
+      // v11+: GoogleSignin.signIn() returns an object with idToken
+      const userInfo = await GoogleSignin.signIn();
+      // On newer versions, it's sometimes under userInfo.data.idToken, but usually userInfo.idToken.
+      // We will handle both cases:
+      const idToken = userInfo.idToken || (userInfo.data && userInfo.data.idToken);
+      
+      if (!idToken) {
+        throw new Error('No ID token found');
+      }
+
+      const googleCredential = GoogleAuthProvider.credential(idToken);
+      const userCredential = await signInWithCredential(auth, googleCredential);
+      
+      const user = userCredential.user;
+      
+      login({ 
+        role: 'Student', 
+        id: user.uid, 
+        name: user.displayName || 'Google Student',
+        email: user.email
+      });
+      
+    } catch (error) {
+      console.error(error);
+      if (error.code === 'SIGN_IN_CANCELLED') {
+        // user cancelled the login flow
+      } else if (error.code === 'IN_PROGRESS') {
+        setErrorText('Sign in is in progress already');
+      } else if (error.code === 'PLAY_SERVICES_NOT_AVAILABLE') {
+        setErrorText('Play services not available or outdated');
+      } else {
+        setErrorText('Failed to sign in with Google');
+      }
+    }
+  };
 
   const handlePressIn = () => {
     Animated.spring(buttonScale, {
@@ -192,7 +250,7 @@ export default function LoginScreen() {
         </View>
 
         {/* Google Button */}
-        <TouchableOpacity style={styles.googleButton}>
+        <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
           <Image 
             source={{ uri: 'https://img.icons8.com/color/48/000000/google-logo.png' }} 
             style={{ width: 24, height: 24 }} 

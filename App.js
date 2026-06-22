@@ -91,7 +91,7 @@ function MainNavigator() {
         )}
 
         {(currentUser?.role === 'Admin' || currentUser?.role === 'Student') && (
-          <Tab.Screen name="StudentReport" component={StudentReport} options={{ title: 'Report' }} />
+          <Tab.Screen name="StudentReport" component={StudentReport} options={{ title: 'Report', headerShown: false, tabBarStyle: { display: 'none' } }} />
         )}
 
         <Tab.Screen name="Advisories" component={Advisories} options={{ title: 'Alerts' }} />

@@ -1,5 +1,7 @@
 import React, { createContext, useState } from 'react';
-
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { auth } from '../firebaseConfig';
+import { signOut } from 'firebase/auth';
 export const DataContext = createContext();
 
 export const DataProvider = ({ children }) => {
@@ -9,7 +11,13 @@ export const DataProvider = ({ children }) => {
     setCurrentUser(userData);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await GoogleSignin.signOut();
+      await signOut(auth);
+    } catch (error) {
+      console.log('Error during logout:', error);
+    }
     setCurrentUser(null);
   };
 
