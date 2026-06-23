@@ -5,18 +5,21 @@ import { DataContext } from '../context/DataContext';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
-import { SUB_ZONAL_HEADS } from '../data/subZonalHeads';
-import { ZONAL_HEADS } from '../data/zonalHeads';
 
 const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen() {
-  const { login } = useContext(DataContext);
+  const { login, staticData } = useContext(DataContext);
+  const SUB_ZONAL_HEADS = staticData?.subZonalHeads || [];
+  const ZONAL_HEADS = staticData?.zonalHeads || [];
   const [activeTab, setActiveTab] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorText, setErrorText] = useState('');
+
+  const [pendingUser, setPendingUser] = useState(null);
+  const [pendingRole, setPendingRole] = useState(null);
 
   // Removed animation to preserve exact DOM structure for web selectors
 
@@ -24,57 +27,96 @@ export default function LoginScreen() {
   const buttonScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: '659444199187-m32f5r56tsna27ch4dep1jg5sa7nuo2t.apps.googleusercontent.com',
-    });
+    if (Platform.OS !== 'web') {
+      GoogleSignin.configure({
+        webClientId: '659444199187-m32f5r56tsna27ch4dep1jg5sa7nuo2t.apps.googleusercontent.com',
+      });
+    }
   }, []);
 
   const handleGoogleLogin = async () => {
     try {
       setErrorText('');
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      
-      // Force account picker every time by signing out first
-      try {
-        await GoogleSignin.signOut();
-      } catch (e) {
-        // Ignore errors if the user wasn't signed in previously
+      if (Platform.OS !== 'web') {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        
+        try {
+          await GoogleSignin.signOut();
+        } catch (e) {}
       }
 
-      // Depending on the version of google-signin, the result might be different.
-      // v11+: GoogleSignin.signIn() returns an object with idToken
       const userInfo = await GoogleSignin.signIn();
-      // On newer versions, it's sometimes under userInfo.data.idToken, but usually userInfo.idToken.
-      // We will handle both cases:
       const idToken = userInfo.idToken || (userInfo.data && userInfo.data.idToken);
       
-      if (!idToken) {
-        throw new Error('No ID token found');
-      }
+      if (!idToken) throw new Error('No ID token found');
 
       const googleCredential = GoogleAuthProvider.credential(idToken);
       const userCredential = await signInWithCredential(auth, googleCredential);
-      
       const user = userCredential.user;
-      
-      login({ 
-        role: 'Student', 
-        id: user.uid, 
-        name: user.displayName || 'Google Student',
-        email: user.email
-      });
+      const email = user.email.toLowerCase();
+
+      // Restrict domain
+      if (!email.endsWith('@gsfcuniversity.ac.in')) {
+        if (Platform.OS !== 'web') {
+          await GoogleSignin.signOut();
+        }
+        await auth.signOut();
+        setErrorText('Only @gsfcuniversity.ac.in emails are allowed.');
+        return;
+      }
+
+      const username = email.split('@')[0];
+
+      // Check for dual roles
+      const zonalHead = ZONAL_HEADS.find(h => h.email.toLowerCase() === email);
+      const subZonalHead = SUB_ZONAL_HEADS.find(h => h.email.toLowerCase() === email);
+
+      if (zonalHead) {
+        setPendingUser({ uid: username, name: user.displayName, email });
+        setPendingRole({ type: 'ZonalHead', data: zonalHead });
+        setActiveTab('roleSelection');
+      } else if (subZonalHead) {
+        setPendingUser({ uid: username, name: user.displayName, email });
+        setPendingRole({ type: 'SubZonalHead', data: subZonalHead });
+        setActiveTab('roleSelection');
+      } else {
+        // Just a student
+        login({ 
+          role: 'Student', 
+          id: username, 
+          name: user.displayName || username,
+          email: email
+        });
+      }
       
     } catch (error) {
       console.error(error);
       if (error.code === 'SIGN_IN_CANCELLED') {
-        // user cancelled the login flow
+        // user cancelled
       } else if (error.code === 'IN_PROGRESS') {
         setErrorText('Sign in is in progress already');
-      } else if (error.code === 'PLAY_SERVICES_NOT_AVAILABLE') {
-        setErrorText('Play services not available or outdated');
       } else {
         setErrorText('Failed to sign in with Google');
       }
+    }
+  };
+
+  const handleRoleSelection = (roleType) => {
+    if (roleType === 'Student') {
+      login({ 
+        role: 'Student', 
+        id: pendingUser.uid, 
+        name: pendingUser.name || pendingUser.uid,
+        email: pendingUser.email
+      });
+    } else {
+      login({ 
+        role: pendingRole.type, 
+        id: pendingRole.data.id, 
+        name: pendingRole.data.name, 
+        data: pendingRole.data,
+        email: pendingUser.email
+      });
     }
   };
 
@@ -121,12 +163,20 @@ export default function LoginScreen() {
     } else if (SUB_ZONAL_HEADS.some(head => head.email === id)) {
       if (pass === '12334') {
         const subZonalHeadInfo = SUB_ZONAL_HEADS.find(head => head.email === id);
-        login({ 
-          role: 'SubZonalHead', 
-          id: subZonalHeadInfo.id, 
-          name: subZonalHeadInfo.name,
-          data: subZonalHeadInfo 
-        });
+        
+        if (id.endsWith('@gsfcuniversity.ac.in')) {
+          const username = id.split('@')[0];
+          setPendingUser({ uid: username, name: subZonalHeadInfo.name, email: id });
+          setPendingRole({ type: 'SubZonalHead', data: subZonalHeadInfo });
+          setActiveTab('roleSelection');
+        } else {
+          login({ 
+            role: 'SubZonalHead', 
+            id: subZonalHeadInfo.id, 
+            name: subZonalHeadInfo.name,
+            data: subZonalHeadInfo 
+          });
+        }
       } else {
         setErrorText('Invalid password.');
       }
@@ -140,12 +190,19 @@ export default function LoginScreen() {
     } else if (ZONAL_HEADS.some(head => head.email === id)) {
       if (pass === '12334') {
         const zonalHeadInfo = ZONAL_HEADS.find(head => head.email === id);
-        login({ 
-          role: 'ZonalHead', 
-          id: zonalHeadInfo.id, 
-          name: zonalHeadInfo.name, 
-          data: zonalHeadInfo 
-        });
+        if (id.endsWith('@gsfcuniversity.ac.in')) {
+          const username = id.split('@')[0];
+          setPendingUser({ uid: username, name: zonalHeadInfo.name, email: id });
+          setPendingRole({ type: 'ZonalHead', data: zonalHeadInfo });
+          setActiveTab('roleSelection');
+        } else {
+          login({ 
+            role: 'ZonalHead', 
+            id: zonalHeadInfo.id, 
+            name: zonalHeadInfo.name, 
+            data: zonalHeadInfo 
+          });
+        }
       } else {
         setErrorText('Invalid password.');
       }
@@ -244,6 +301,34 @@ export default function LoginScreen() {
 
                 {/* Extra spacing so the cutout notch doesn't overlap text */}
                 <View style={{ height: 40 }} />
+              </View>
+            )}
+
+            {activeTab === 'roleSelection' && (
+              <View style={styles.form}>
+                <Text style={{ textAlign: 'center', marginBottom: 20, color: '#666', fontSize: 16 }}>
+                  You have multiple roles associated with this email. Please select how you want to log in:
+                </Text>
+
+                <TouchableOpacity 
+                  style={[styles.input, { backgroundColor: '#F3E9DD', borderColor: '#6E2A36', alignItems: 'center' }]} 
+                  onPress={() => handleRoleSelection(pendingRole.type)}
+                >
+                  <Text style={{ color: '#6E2A36', fontWeight: 'bold', fontSize: 16 }}>
+                    Continue as {pendingRole.type === 'ZonalHead' ? 'Zonal Head' : 'Sub-Zonal Head'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.input, { backgroundColor: '#F5F5F5', alignItems: 'center', marginTop: 10 }]} 
+                  onPress={() => handleRoleSelection('Student')}
+                >
+                  <Text style={{ color: '#333', fontWeight: 'bold', fontSize: 16 }}>
+                    Continue as Student
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={{ height: 20 }} />
               </View>
             )}
 

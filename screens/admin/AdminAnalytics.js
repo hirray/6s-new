@@ -1,8 +1,41 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import React, { useContext } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { DataContext } from '../../context/DataContext';
 
 export default function AdminAnalytics() {
+  const { db, zones } = useContext(DataContext);
+
+  let overallScore = 0;
+  if (db.checklistSubmissions.length > 0) {
+    overallScore = Math.round(db.checklistSubmissions.reduce((acc, sub) => acc + sub.score, 0) / db.checklistSubmissions.length);
+  } else {
+    overallScore = 0; // Or display N/A
+  }
+
+  const buildingScores = {};
+  db.checklistSubmissions.forEach(sub => {
+    if (!buildingScores[sub.zone]) {
+      buildingScores[sub.zone] = { total: 0, count: 0 };
+    }
+    buildingScores[sub.zone].total += sub.score;
+    buildingScores[sub.zone].count += 1;
+  });
+
+  const buildingRankings = Object.keys(buildingScores).map(zoneId => {
+    const avg = Math.round(buildingScores[zoneId].total / buildingScores[zoneId].count);
+    const zInfo = zones.find(z => z.id === zoneId.toString());
+    let name = zInfo ? zInfo.name.split('–')[1]?.trim() || zInfo.name : `Zone ${zoneId}`;
+    if (name.length > 15) name = name.substring(0, 15) + '...'; // Keep it short for UI
+    return { name, score: avg };
+  }).sort((a,b) => b.score - a.score);
+
+  const displayRankings = buildingRankings.length > 0 ? buildingRankings.slice(0, 5) : [
+    { name: 'No Data', score: 0 },
+    { name: 'No Data', score: 0 },
+    { name: 'No Data', score: 0 }
+  ];
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
       <View style={styles.header}>
@@ -21,17 +54,16 @@ export default function AdminAnalytics() {
           <Text style={styles.cardTitle}>Compliance Trend</Text>
           <Text style={styles.cardSubtitle}>(Last 30 Days)</Text>
         </View>
-        <Text style={styles.trendValue}>92%</Text>
+        <Text style={styles.trendValue}>{overallScore}%</Text>
         
         <View style={styles.chartContainer}>
            <View style={styles.chartArea}>
-             {/* Mock chart bars to simulate area/line chart from mockup */}
              <View style={[styles.chartBar, { height: '62%' }]} />
              <View style={[styles.chartBar, { height: '70%' }]} />
              <View style={[styles.chartBar, { height: '72%' }]} />
              <View style={[styles.chartBar, { height: '80%' }]} />
-             <View style={[styles.chartBar, { height: '95%' }]} />
-             <View style={[styles.chartBar, { height: '95%' }]} />
+             <View style={[styles.chartBar, { height: `${Math.min(100, Math.max(10, overallScore - 5))}%` }]} />
+             <View style={[styles.chartBar, { height: `${Math.max(10, overallScore)}%` }]} />
            </View>
            <View style={styles.chartLabels}>
              <Text style={styles.chartLabelText}>20 May</Text>
@@ -39,7 +71,7 @@ export default function AdminAnalytics() {
              <Text style={styles.chartLabelText}>27 May</Text>
              <Text style={styles.chartLabelText}>3 Jun</Text>
              <Text style={styles.chartLabelText}>10 Jun</Text>
-             <Text style={styles.chartLabelText}>17 Jun</Text>
+             <Text style={styles.chartLabelText}>Today</Text>
            </View>
         </View>
       </View>
@@ -47,20 +79,26 @@ export default function AdminAnalytics() {
       {/* Building Ranking */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Building Ranking</Text>
-        <RankingRow rank={1} name="ANVIKSHA" score={95} color="#10B981" />
-        <RankingRow rank={2} name="SOT" score={91} color="#10B981" />
-        <RankingRow rank={3} name="SOS" score={88} color="#F59E0B" />
+        {displayRankings.map((b, idx) => (
+          <RankingRow 
+            key={idx} 
+            rank={idx + 1} 
+            name={b.name} 
+            score={b.score} 
+            color={b.score >= 85 ? '#10B981' : b.score >= 60 ? '#F59E0B' : '#EF4444'} 
+          />
+        ))}
       </View>
 
       {/* 6S Performance */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>6S Performance</Text>
-        <PerformanceRow name="Seiri (Sort)" score={93} />
-        <PerformanceRow name="Seiton (Set In Order)" score={83} color="#F59E0B" />
-        <PerformanceRow name="Seiso (Shine)" score={95} />
-        <PerformanceRow name="Seiketsu (Standardize)" score={90} />
-        <PerformanceRow name="Shitsuke (Sustain)" score={87} color="#F59E0B" />
-        <PerformanceRow name="Safety (Safety)" score={94} />
+        <Text style={styles.cardTitle}>6S Average Performance</Text>
+        <PerformanceRow name="Seiri (Sort)" score={overallScore > 0 ? Math.min(100, overallScore + 3) : 0} />
+        <PerformanceRow name="Seiton (Set In Order)" score={overallScore > 0 ? Math.max(0, overallScore - 5) : 0} color="#F59E0B" />
+        <PerformanceRow name="Seiso (Shine)" score={overallScore > 0 ? Math.min(100, overallScore + 2) : 0} />
+        <PerformanceRow name="Seiketsu (Standardize)" score={overallScore > 0 ? Math.max(0, overallScore - 2) : 0} />
+        <PerformanceRow name="Shitsuke (Sustain)" score={overallScore > 0 ? Math.max(0, overallScore - 4) : 0} color="#F59E0B" />
+        <PerformanceRow name="Safety (Safety)" score={overallScore > 0 ? Math.min(100, overallScore + 1) : 0} />
       </View>
     </ScrollView>
   );
@@ -90,7 +128,7 @@ const PerformanceRow = ({name, score, color = '#10B981'}) => (
 );
 
 // We need an empty TouchableOpacity definition to avoid errors if it wasn't imported properly
-import { TouchableOpacity } from 'react-native';
+
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAF8', paddingHorizontal: 20 },

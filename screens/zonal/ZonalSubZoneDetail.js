@@ -7,7 +7,7 @@ export default function ZonalSubZoneDetail({ subZone, onBack }) {
 
   const handleApprove = () => {
     setApproved(true);
-    Alert.alert("Approved", `Sub-Zone ${subZone.subZone} daily checklist approved successfully.`);
+    Alert.alert("Approved", `Sub-Zone ${subZone.floor} daily checklist approved successfully.`);
   };
 
   return (
@@ -17,14 +17,14 @@ export default function ZonalSubZoneDetail({ subZone, onBack }) {
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.title}>Sub-Zone {subZone.subZone}</Text>
-          <Text style={styles.subtitle}>In-Depth Report</Text>
+          <Text style={styles.title}>Sub-Zone {subZone.floor}</Text>
+          <Text style={styles.subtitle}>In-Depth Report ({subZone.name})</Text>
         </View>
       </View>
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Areas Covered</Text>
-        <Text style={styles.desc}>{subZone.areas}</Text>
+        <Text style={styles.desc}>{subZone.floor}</Text>
       </View>
 
       <View style={styles.card}>

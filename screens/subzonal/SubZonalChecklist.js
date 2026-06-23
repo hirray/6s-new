@@ -5,8 +5,8 @@ import { DataContext } from '../../context/DataContext';
 import { getChecklistForUser } from '../../utils/checklistMapper';
 
 export default function SubZonalChecklist({ category, onBack }) {
-  const { currentUser } = useContext(DataContext);
-  const checklistData = getChecklistForUser(currentUser?.data);
+  const { currentUser, staticData, submitChecklist } = useContext(DataContext);
+  const checklistData = getChecklistForUser(currentUser?.data, staticData?.checklists || []);
   const categoryKey = category.replace(/\s+/g, ''); // E.g., 'Set In Order' -> 'SetInOrder'
   const items = checklistData[categoryKey] || [];
 
@@ -19,7 +19,7 @@ export default function SubZonalChecklist({ category, onBack }) {
       initialState[index] = { checked: true, remarks: '' };
     });
     setChecklistState(initialState);
-  }, [items]);
+  }, [JSON.stringify(items)]);
 
   const toggleCheck = (index) => {
     setChecklistState(prev => ({
@@ -33,6 +33,16 @@ export default function SubZonalChecklist({ category, onBack }) {
       ...prev,
       [index]: { ...prev[index], remarks: text }
     }));
+  };
+
+  const handleSave = () => {
+    const totalItems = items.length;
+    if (totalItems > 0) {
+      const checkedCount = Object.values(checklistState).filter(s => s.checked).length;
+      const score = Math.round((checkedCount / totalItems) * 100);
+      submitChecklist(currentUser?.id, currentUser?.data?.zone, score);
+    }
+    onBack();
   };
 
   return (
@@ -78,7 +88,7 @@ export default function SubZonalChecklist({ category, onBack }) {
         )}
 
         {items.length > 0 && (
-          <TouchableOpacity style={styles.submitBtn} onPress={onBack}>
+          <TouchableOpacity style={styles.submitBtn} onPress={handleSave}>
             <Text style={styles.submitBtnText}>Save Progress</Text>
           </TouchableOpacity>
         )}

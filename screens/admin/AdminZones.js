@@ -1,49 +1,69 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-const ZONES_DATA = [
-  {
-    id: 2,
-    name: 'SOT - School of Technology',
-    icon: 'business',
-    bgColor: '#8C1B2F',
-    subZones: [
-      { id: '2.1', name: 'Floor 1', concerns: 21, pending: 3, resolved: 18, compliance: '92%' },
-      { id: '2.2', name: 'Floor 2', concerns: 20, pending: 5, resolved: 15, compliance: '88%' },
-      { id: '2.3', name: 'Floor 3', concerns: 26, pending: 1, resolved: 25, compliance: '95%' },
-    ]
-  },
-  {
-    id: 1,
-    name: 'SOS - School of Science',
-    icon: 'business',
-    bgColor: '#1C75FF',
-    subZones: [
-      { id: '1.1', name: 'Floor 1', concerns: 24, pending: 4, resolved: 20, compliance: '90%' },
-      { id: '1.2', name: 'Floor 2', concerns: 22, pending: 6, resolved: 16, compliance: '85%' },
-      { id: '1.3', name: 'Floor 3', concerns: 25, pending: 3, resolved: 22, compliance: '89%' },
-    ]
-  },
-  {
-    id: 4,
-    name: 'Zone 4 - Kasturba Bhavan',
-    icon: 'business',
-    bgColor: '#00B94A',
-    subZones: [
-      { id: '4.1', name: 'Hostel Block A', concerns: 15, pending: 2, resolved: 13, compliance: '86%' },
-      { id: '4.2', name: 'Mess Area', concerns: 8, pending: 0, resolved: 8, compliance: '100%' },
-    ]
-  }
-];
+import { DataContext } from '../../context/DataContext';
+import ZonalSubZoneDetail from '../zonal/ZonalSubZoneDetail';
 
 export default function AdminZones() {
-  const [expandedZone, setExpandedZone] = useState(2); // Expand SOT by default to match mockup
+  const { db, staticData, zones } = useContext(DataContext);
+  const [expandedZone, setExpandedZone] = useState('1');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSubZone, setSelectedSubZone] = useState(null);
+
+  const ZONES_DATA = zones.map((z, index) => {
+    const bgColors = ['#8C1B2F', '#1C75FF', '#00B94A', '#F59E0B', '#8C1B2F', '#1C75FF', '#00B94A', '#F59E0B'];
+    
+    const zh = (staticData?.zonalHeads || []).find(h => h.zone.toString() === z.id.toString());
+
+    const subZones = (staticData?.subZonalHeads || []).filter(szh => szh.zone.toString() === z.id.toString()).map(szh => {
+      const szhFloor = szh.subZone || szh.floor || 'Unknown Area';
+      const szhComplaints = db.complaints.filter(c => 
+        (c.subZone === szhFloor || c.subZone === szh.name)
+      );
+      const pending = szhComplaints.filter(c => c.status === 'Pending').length;
+      const resolved = szhComplaints.filter(c => c.status === 'Resolved').length;
+      
+      const submissions = db.checklistSubmissions.filter(s => s.subZonalHeadId === szh._id || s.subZonalHeadId === szh.id)
+        .sort((a,b) => new Date(b.date) - new Date(a.date));
+      const compliance = submissions.length > 0 ? `${submissions[0].score}%` : 'N/A';
+
+      const fullDataMapped = {
+        ...szh,
+        floor: szhFloor,
+        name: szh.name || 'Unassigned'
+      };
+
+      return {
+        id: szh._id || szh.id || Math.random().toString(),
+        name: szhFloor,
+        headName: szh.name,
+        concerns: szhComplaints.length,
+        pending,
+        resolved,
+        compliance,
+        fullData: fullDataMapped
+      };
+    });
+
+    return {
+      id: z.id,
+      name: z.name,
+      headName: zh ? zh.name : 'Unassigned',
+      icon: 'business',
+      bgColor: bgColors[index % bgColors.length],
+      subZones
+    };
+  });
+
+  const filteredZones = ZONES_DATA.filter(z => z.name.toLowerCase().includes(searchQuery.toLowerCase()) || z.subZones.some(s => s.name.toLowerCase().includes(searchQuery.toLowerCase())));
 
   const toggleZone = (id) => {
     setExpandedZone(expandedZone === id ? null : id);
   };
+
+  if (selectedSubZone) {
+    return <ZonalSubZoneDetail subZone={selectedSubZone} onBack={() => setSelectedSubZone(null)} />;
+  }
 
   return (
     <View style={styles.container}>
@@ -68,10 +88,10 @@ export default function AdminZones() {
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: 100 }}>
-        {ZONES_DATA.map(zone => {
+        {filteredZones.map((zone, zIndex) => {
           const isExpanded = expandedZone === zone.id;
           return (
-            <View key={zone.id} style={styles.accordionCard}>
+            <View key={`zone-${zone.id}-${zIndex}`} style={styles.accordionCard}>
               <TouchableOpacity style={styles.accordionHeader} onPress={() => toggleZone(zone.id)}>
                 <View style={[styles.zoneIconCircle, { backgroundColor: zone.bgColor }]}>
                   <Ionicons name={zone.icon} size={24} color="#FFFFFF" />
@@ -90,8 +110,12 @@ export default function AdminZones() {
                     <Text style={styles.thIcon}></Text>
                   </View>
 
-                  {zone.subZones.map(sub => (
-                    <TouchableOpacity key={sub.id} style={styles.tableRow}>
+                  {zone.subZones.map((sub, sIndex) => (
+                    <TouchableOpacity 
+                      key={`sub-${sub.id}-${sIndex}`} 
+                      style={styles.tableRow}
+                      onPress={() => setSelectedSubZone(sub.fullData)}
+                    >
                       <Text style={styles.tdLabel}>{sub.name}</Text>
                       <Text style={[styles.tdValue, {color: '#10B981', fontWeight: 'bold'}]}>{sub.compliance}</Text>
                       <Text style={[styles.tdValue, {color: '#F59E0B', fontWeight: 'bold'}]}>{sub.pending}</Text>

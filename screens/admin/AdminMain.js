@@ -7,6 +7,7 @@ import AdminZones from './AdminZones';
 import AdminAdvisories from './AdminAdvisories';
 import AdminAnalytics from './AdminAnalytics';
 import AdminProfile from './AdminProfile';
+import FloatingNavBar from '../../components/FloatingNavBar';
 
 export default function AdminMain() {
   const [activeTab, setActiveTab] = useState('Home');
@@ -28,33 +29,17 @@ export default function AdminMain() {
         {renderContent()}
       </View>
       
-      {/* 5-Tab Bottom Navigation */}
-      <View style={styles.navBackgroundStandard}>
-        <TouchableOpacity style={styles.navItemStandard} onPress={() => setActiveTab('Home')}>
-          <Ionicons name={activeTab === 'Home' ? "home" : "home-outline"} size={22} color={activeTab === 'Home' ? '#FFFFFF' : '#FCA5A5'} />
-          <Text style={[styles.navTextStandard, activeTab === 'Home' && styles.activeNavTextStandard]}>Home</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItemStandard} onPress={() => setActiveTab('Zones')}>
-          <Ionicons name={activeTab === 'Zones' ? "business" : "business-outline"} size={22} color={activeTab === 'Zones' ? '#FFFFFF' : '#FCA5A5'} />
-          <Text style={[styles.navTextStandard, activeTab === 'Zones' && styles.activeNavTextStandard]}>Zones</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItemStandard} onPress={() => setActiveTab('Advisory')}>
-          <Ionicons name={activeTab === 'Advisory' ? "document-text" : "document-text-outline"} size={22} color={activeTab === 'Advisory' ? '#FFFFFF' : '#FCA5A5'} />
-          <Text style={[styles.navTextStandard, activeTab === 'Advisory' && styles.activeNavTextStandard]}>Advisory</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItemStandard} onPress={() => setActiveTab('Analytics')}>
-          <Ionicons name={activeTab === 'Analytics' ? "bar-chart" : "bar-chart-outline"} size={22} color={activeTab === 'Analytics' ? '#FFFFFF' : '#FCA5A5'} />
-          <Text style={[styles.navTextStandard, activeTab === 'Analytics' && styles.activeNavTextStandard]}>Analytics</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItemStandard} onPress={() => setActiveTab('Profile')}>
-          <Ionicons name={activeTab === 'Profile' ? "person" : "person-outline"} size={22} color={activeTab === 'Profile' ? '#FFFFFF' : '#FCA5A5'} />
-          <Text style={[styles.navTextStandard, activeTab === 'Profile' && styles.activeNavTextStandard]}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      <FloatingNavBar 
+        tabs={[
+          { key: 'Home', icon: 'home-outline', activeIcon: 'home', label: 'Home' },
+          { key: 'Zones', icon: 'business-outline', activeIcon: 'business', label: 'Zones' },
+          { key: 'Advisory', icon: 'document-text-outline', activeIcon: 'document-text', label: 'Advisory' },
+          { key: 'Analytics', icon: 'bar-chart-outline', activeIcon: 'bar-chart', label: 'Analytics' },
+          { key: 'Profile', icon: 'person-outline', activeIcon: 'person', label: 'Profile' }
+        ]}
+        activeTab={activeTab}
+        onTabPress={setActiveTab}
+      />
     </View>
   );
 }

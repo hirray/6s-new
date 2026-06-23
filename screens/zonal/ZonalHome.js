@@ -18,7 +18,7 @@ export default function ZonalHome({ onSelectSubZone }) {
       uniqueSubZonesMap[h.subZone] = [];
     }
     // Avoid duplicate areas in string
-    if(!uniqueSubZonesMap[h.subZone].includes(h.areasCovered)) {
+    if(!uniqueSubZonesMap[h.subZone]?.includes(h.areasCovered)) {
       uniqueSubZonesMap[h.subZone].push(h.areasCovered);
     }
   });

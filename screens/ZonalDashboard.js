@@ -1,17 +1,20 @@
 import React, { useContext, useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, FlatList } from 'react-native';
 import { DataContext } from '../context/DataContext';
+import ZonalSubZoneDetail from './zonal/ZonalSubZoneDetail';
 
 export default function ZonalDashboard() {
   const { currentUser, SZH, db, setDb } = useContext(DataContext);
   const [remarkText, setRemarkText] = useState('');
   const [selectedSubZone, setSelectedSubZone] = useState('');
 
+  const [selectedSZH, setSelectedSZH] = useState(null);
+
   // 1. Filter Subordinates
   const mySZHs = SZH.filter(s => s.zone === currentUser?.data?.id);
   
   // 2. Filter Complaints
-  const myComplaints = db.complaints.filter(c => c.zone === currentUser?.data?.area || c.zone.includes(`Zone ${currentUser?.data?.id}`));
+  const myComplaints = db.complaints.filter(c => c.zone === currentUser?.data?.area || (c.zone && c.zone.includes(`Zone ${currentUser?.data?.id}`)));
 
   // 3. Filter Remarks
   const myRemarks = db.remarks.filter(r => r.author === currentUser?.name);
@@ -49,6 +52,10 @@ export default function ZonalDashboard() {
     setSelectedSubZone('');
   };
 
+  if (selectedSZH) {
+    return <ZonalSubZoneDetail subZone={selectedSZH} onBack={() => setSelectedSZH(null)} />;
+  }
+
   return (
     <ScrollView style={styles.container}>
       {/* A. Header Section */}
@@ -71,7 +78,11 @@ export default function ZonalDashboard() {
           const statusColor = score >= 85 ? '#1A8C4E' : score >= 60 ? '#B07D10' : '#C0182A';
 
           return (
-            <View key={sz.id} style={styles.tableRow}>
+            <TouchableOpacity 
+              key={sz.id} 
+              style={styles.tableRow}
+              onPress={() => hasSubmitted ? setSelectedSZH(sz) : Alert.alert('Not Submitted', 'No checklist submitted yet.')}
+            >
               <View style={{ flex: 1.5 }}>
                 <Text style={styles.floorText}>{sz.floor}</Text>
                 <Text style={styles.nameText}>{sz.name}</Text>
@@ -91,7 +102,7 @@ export default function ZonalDashboard() {
                   <Text style={styles.approveBtnText}>Approve</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </TouchableOpacity>
           );
         })}
       </View>

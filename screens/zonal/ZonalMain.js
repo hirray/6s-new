@@ -6,6 +6,7 @@ import ZonalHomeStack from './ZonalHomeStack';
 import ZonalInspection from './ZonalInspection';
 import ZonalProfile from './ZonalProfile';
 import Advisories from '../Advisories';
+import FloatingNavBar from '../../components/FloatingNavBar';
 
 export default function ZonalMain() {
   const [activeTab, setActiveTab] = useState('Home');
@@ -26,38 +27,16 @@ export default function ZonalMain() {
         {renderContent()}
       </View>
       
-      {/* Bottom Navigation */}
-      <View style={styles.navWrapper}>
-        <View style={styles.navBackground}>
-          
-          <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('Inspection')}>
-            <Ionicons name="clipboard-outline" size={24} color={activeTab === 'Inspection' ? '#FFFFFF' : '#FCA5A5'} />
-            <Text style={[styles.navText, activeTab === 'Inspection' && styles.activeNavText]}>Inspection</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('Advisories')}>
-            <Ionicons name="notifications-outline" size={24} color={activeTab === 'Advisories' ? '#FFFFFF' : '#FCA5A5'} />
-            <Text style={[styles.navText, activeTab === 'Advisories' && styles.activeNavText]}>Alerts</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('Profile')}>
-            <Ionicons name="person-outline" size={24} color={activeTab === 'Profile' ? '#FFFFFF' : '#FCA5A5'} />
-            <Text style={[styles.navText, activeTab === 'Profile' && styles.activeNavText]}>Profile</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Protruding Home Tab */}
-        <View style={styles.homeTabContainer}>
-          <TouchableOpacity 
-            style={styles.homeTabInner}
-            onPress={() => setActiveTab('Home')}
-            activeOpacity={0.9}
-          >
-            <Ionicons name="home-outline" size={24} color={activeTab === 'Home' ? '#8C1B2F' : '#6B7280'} />
-            <Text style={[styles.homeNavText, activeTab === 'Home' && styles.activeHomeNavText]}>Home</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <FloatingNavBar 
+        tabs={[
+          { key: 'Home', icon: 'home-outline', activeIcon: 'home', label: 'Home' },
+          { key: 'Inspection', icon: 'clipboard-outline', activeIcon: 'clipboard', label: 'Inspection' },
+          { key: 'Advisories', icon: 'notifications-outline', activeIcon: 'notifications', label: 'Alerts' },
+          { key: 'Profile', icon: 'person-outline', activeIcon: 'person', label: 'Profile' }
+        ]}
+        activeTab={activeTab}
+        onTabPress={setActiveTab}
+      />
     </View>
   );
 }

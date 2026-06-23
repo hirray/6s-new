@@ -1,38 +1,113 @@
-import React, { useState, useContext } from 'react';
-import { StyleSheet, Text, View, ImageBackground, TouchableOpacity, Modal, TouchableWithoutFeedback, ScrollView } from 'react-native';
+import React, { useState, useContext, useRef, useEffect } from 'react';
+import { StyleSheet, Text, View, ImageBackground, TouchableOpacity, Modal, TouchableWithoutFeedback, ScrollView, Animated, Easing, Dimensions } from 'react-native';
+import { ReactNativeZoomableView } from '@openspacelabs/react-native-zoomable-view';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
 
-// Hardcoded zone positions relative to a square/rectangle map container
-// These would need to be tweaked depending on the actual image aspect ratio
-const ZONE_MARKERS = [
-  { id: 1, top: '20%', left: '70%', name: 'Zone 1', manager: 'Dr. Devjani Banerjee', status: 'Green', score: 100 },
-  { id: 2, top: '40%', left: '55%', name: 'Zone 2', manager: 'Dr. Sanjukta B. Goswami', status: 'Green', score: 95 },
-  { id: 3, top: '55%', left: '80%', name: 'Zone 3', manager: 'Mr. Naren Acharya', status: 'Green', score: 100 },
-  { id: 4, top: '50%', left: '35%', name: 'Zone 4', manager: 'Dr. Abha Kalaiya', status: 'Yellow', score: 85 },
-  { id: 5, top: '65%', left: '35%', name: 'Zone 5', manager: 'Dr. Mayank Sharma', status: 'Green', score: 90 },
-  { id: 6, top: '30%', left: '45%', name: 'Zone 6', manager: 'Dr. Akhilesh Prajapati', status: 'Red', score: 65 },
-  { id: 7, top: '45%', left: '15%', name: 'Zone 7', manager: 'Mr. A. Srikrishnan', status: 'Yellow', score: 75 },
-  { id: 8, top: '85%', left: '70%', name: 'Zone 8', manager: 'Prof. Ranjitha Banerjee', status: 'Green', score: 98 },
-];
+const getMarkerColor = (status) => {
+  switch(status) {
+    case 'Green': return '#10B981'; // Emerald 500
+    case 'Yellow': return '#F59E0B'; // Amber 500
+    case 'Red': return '#EF4444'; // Red 500
+    default: return '#6B7280';
+  }
+};
 
+const AnimatedMarker = ({ marker, onPress }) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(0.6)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.parallel([
+        Animated.timing(scaleAnim, {
+          toValue: 1.6,
+          duration: 2000,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 2000,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        })
+      ])
+    ).start();
+  }, []);
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.markerWrapper, 
+        { top: marker.top, left: marker.left }
+      ]}
+      onPress={onPress}
+    >
+      <Animated.View style={[
+        styles.markerRing, 
+        { 
+          transform: [{ scale: scaleAnim }],
+          opacity: opacityAnim,
+        }
+      ]} />
+      <View style={[styles.markerCircle, { backgroundColor: getMarkerColor(marker.status) }]}>
+        <Text style={styles.markerText}>{marker.id}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
 export default function AdminHome() {
-  const { zones } = useContext(DataContext);
+  const { zones, db, staticData } = useContext(DataContext);
   const [selectedZone, setSelectedZone] = useState(null);
 
-  const totalZones = zones.length;
-  const greenZones = zones.filter(z => z.status === 'Green').length;
-  const yellowZones = zones.filter(z => z.status === 'Yellow').length;
-  const redZones = zones.filter(z => z.status === 'Red').length;
+  // Compute live zone data from MongoDB db
+  const liveZones = zones.map(z => {
+    const head = staticData?.zonalHeads?.find(h => h.zone === parseInt(z.id));
+    const manager = head ? head.name : 'Unassigned';
 
-  const getMarkerColor = (status) => {
-    switch(status) {
-      case 'Green': return '#10B981'; // Emerald 500
-      case 'Yellow': return '#F59E0B'; // Amber 500
-      case 'Red': return '#EF4444'; // Red 500
-      default: return '#6B7280';
+    const extractZoneNumber = (zoneStr) => {
+      if (!zoneStr) return null;
+      const match = zoneStr.match(/Zone\s*0?(\d+)/i);
+      return match ? parseInt(match[1], 10) : null;
+    };
+    
+    const zoneComplaints = db.complaints.filter(c => extractZoneNumber(c.zone) === parseInt(z.id) && c.status === 'Pending');
+    
+    const zoneSZHs = staticData?.subZonalHeads?.filter(s => s.zone === parseInt(z.id)) || [];
+    const recentSubs = zoneSZHs.map(sz => {
+      return db.checklistSubmissions
+        .filter(s => s.subZonalHeadId === sz.id)
+        .sort((a,b) => new Date(b.date) - new Date(a.date))[0];
+    }).filter(Boolean);
+
+    let avgScore = 100;
+    if (recentSubs.length > 0) {
+      avgScore = recentSubs.reduce((acc, sub) => acc + sub.score, 0) / recentSubs.length;
+    } else if (zoneSZHs.length > 0) {
+      avgScore = 0; // Nobody submitted
     }
-  };
+
+    let score = Math.max(0, Math.round(avgScore - (zoneComplaints.length * 5)));
+    let status = 'Green';
+    if (score < 60) status = 'Red';
+    else if (score < 85) status = 'Yellow';
+
+    return {
+      ...z,
+      manager,
+      status,
+      score,
+      openConcerns: zoneComplaints.length,
+      lastSub: recentSubs.length > 0 ? recentSubs[0].date : 'None yet',
+      checklistRatio: `${recentSubs.length}/${zoneSZHs.length}`
+    };
+  });
+
+  const totalZones = liveZones.length;
+  const greenZones = liveZones.filter(z => z.status === 'Green').length;
+  const yellowZones = liveZones.filter(z => z.status === 'Yellow').length;
+  const redZones = liveZones.filter(z => z.status === 'Red').length;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 30 }}>
@@ -57,42 +132,56 @@ export default function AdminHome() {
         </View>
       </View>
 
-      <View style={styles.header}>
-        <Text style={styles.title}>Live Campus Zone Map</Text>
-        <Text style={styles.subtitle}>Tap a zone marker to view progress</Text>
-      </View>
+      <View style={styles.mapCard}>
+        <View style={styles.mapCardHeader}>
+          <Text style={styles.mapCardTitle}>Live Campus Zone Map — Annexure I</Text>
+          <Text style={styles.mapCardSubtitle}>Pinch to zoom in and out. Drag to pan.</Text>
+        </View>
 
-      <View style={styles.mapContainer}>
-        {/* Placeholder background color if image isn't available */}
-        <ImageBackground 
-          source={{uri: 'https://via.placeholder.com/800x600/374151/FFFFFF?text=Campus+Map'}}
-          style={styles.map}
-          resizeMode="cover"
-        >
-          {/* Overlay to darken map slightly */}
-          <View style={styles.mapOverlay} />
-
-          {ZONE_MARKERS.map(marker => (
-            <TouchableOpacity
-              key={marker.id}
-              style={[
-                styles.markerWrapper, 
-                { top: marker.top, left: marker.left }
-              ]}
-              onPress={() => setSelectedZone(marker)}
+        <View style={styles.mapContainer}>
+          <ReactNativeZoomableView
+            maxZoom={3}
+            minZoom={1}
+            zoomStep={0.5}
+            initialZoom={1}
+            bindToBorders={true}
+          >
+            <ImageBackground 
+              source={require('../../assets/live-map.png')}
+              style={styles.map}
+              resizeMode="cover"
             >
-              {/* Dashed ring effect like the mockup */}
-              <View style={[styles.markerRing, { borderColor: getMarkerColor(marker.status) }]} />
-              
-              <View style={[styles.markerCircle, { backgroundColor: getMarkerColor(marker.status) }]}>
-                <Text style={styles.markerText}>{marker.id}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ImageBackground>
+              <View style={styles.mapOverlay} />
+
+              {liveZones.map(marker => (
+                <AnimatedMarker 
+                  key={marker.id} 
+                  marker={marker} 
+                  onPress={() => setSelectedZone(marker)} 
+                />
+              ))}
+            </ImageBackground>
+          </ReactNativeZoomableView>
+        </View>
+
+        <View style={styles.mapCardDivider} />
+
+        <View style={styles.mapLegend}>
+          <View style={styles.legendRow}>
+            <View style={[styles.legendDot, { backgroundColor: getMarkerColor('Green') }]} />
+            <Text style={styles.legendText}>On time / within 7-day review</Text>
+          </View>
+          <View style={styles.legendRow}>
+            <View style={[styles.legendDot, { backgroundColor: getMarkerColor('Yellow') }]} />
+            <Text style={styles.legendText}>1 day late / overdue review</Text>
+          </View>
+          <View style={styles.legendRow}>
+            <View style={[styles.legendDot, { backgroundColor: getMarkerColor('Red') }]} />
+            <Text style={styles.legendText}>2+ days late / severely overdue</Text>
+          </View>
+        </View>
       </View>
 
-      {/* Summary Modal Popup */}
       {selectedZone && (
         <Modal transparent visible animationType="fade">
           <TouchableWithoutFeedback onPress={() => setSelectedZone(null)}>
@@ -115,23 +204,23 @@ export default function AdminHome() {
                   <View style={styles.popupRow}>
                     <Text style={styles.popupLabel}>Overall Status</Text>
                     <Text style={[styles.popupValue, { color: getMarkerColor(selectedZone.status) }]}>
-                      {selectedZone.status} — On Time
+                      {selectedZone.status}
                     </Text>
                   </View>
                   
                   <View style={styles.popupRow}>
                     <Text style={styles.popupLabel}>Checklist</Text>
-                    <Text style={styles.popupValue}>8/8 tasks done</Text>
+                    <Text style={styles.popupValue}>{selectedZone.checklistRatio} tasks done</Text>
                   </View>
 
                   <View style={styles.popupRow}>
                     <Text style={styles.popupLabel}>Last Submission</Text>
-                    <Text style={styles.popupValue}>Today, 08:55 AM</Text>
+                    <Text style={styles.popupValue}>{selectedZone.lastSub}</Text>
                   </View>
 
                   <View style={styles.popupRow}>
                     <Text style={styles.popupLabel}>Open Concerns</Text>
-                    <Text style={styles.popupValue}>0 concerns</Text>
+                    <Text style={styles.popupValue}>{selectedZone.openConcerns} concerns</Text>
                   </View>
 
                   <View style={styles.popupScoreBox}>
@@ -190,15 +279,24 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
     fontWeight: '600',
   },
-  header: { paddingHorizontal: 20, paddingBottom: 10, paddingTop: 10, backgroundColor: '#FAFAF8' },
-  title: { fontSize: 20, fontWeight: 'bold', color: '#8C1B2F' },
-  subtitle: { fontSize: 13, color: '#6B7280', marginTop: 4 },
-  mapContainer: { flex: 1, backgroundColor: '#374151', margin: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 2, borderColor: '#8C1B2F' },
+  mapCard: { backgroundColor: '#FFFFFF', margin: 16, borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3, borderWidth: 1, borderColor: '#E5E7EB' },
+  mapCardHeader: { marginBottom: 16 },
+  zoomControls: { flexDirection: 'row', alignItems: 'center', marginLeft: 16, marginTop: 4 },
+  zoomButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+  zoomButtonText: { fontSize: 20, fontWeight: 'bold', color: '#374151', marginTop: -2 },
+  mapCardTitle: { fontSize: 22, fontWeight: 'bold', color: '#8C1B2F' },
+  mapCardSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 8 },
+  mapContainer: { aspectRatio: 860/620, backgroundColor: '#374151', borderRadius: 12, overflow: 'hidden' },
   map: { width: '100%', height: '100%' },
-  mapOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)' }, // Slightly darken to pop markers
+  mapOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.1)' },
+  mapCardDivider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 20 },
+  mapLegend: { paddingHorizontal: 4 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  legendDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
+  legendText: { fontSize: 14, color: '#374151' },
   markerWrapper: { position: 'absolute', width: 60, height: 60, alignItems: 'center', justifyContent: 'center', marginLeft: -30, marginTop: -30 }, // Center based on top/left
-  markerRing: { position: 'absolute', width: 60, height: 60, borderRadius: 30, borderWidth: 1, borderStyle: 'dashed', opacity: 0.6 },
-  markerCircle: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.8, shadowRadius: 4, elevation: 5 },
+  markerRing: { position: 'absolute', width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderStyle: 'dashed', borderColor: 'rgba(192, 24, 42, 0.8)', backgroundColor: 'rgba(192, 24, 42, 0.2)' },
+  markerCircle: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.8, shadowRadius: 4, elevation: 5 },
   markerText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
   popupCard: { width: '85%', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 10 },

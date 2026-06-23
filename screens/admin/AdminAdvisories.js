@@ -2,10 +2,6 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
 const ZONES = ['All Zones', 'Zone 1 - Anviksha', 'Zone 2 - SOT', 'Zone 3 - Common Amenities', 'Zone 4 - Kasturba', 'Zone 5 - Vikram Sarabhai', 'Zone 6 - Swami Vivekananda', 'Zone 7 - FirePlex', 'Zone 8 - SOS'];
 const SUB_ZONES_MAP = {
   'Zone 1 - Anviksha': ['All Sub-Zones', 'Ground Floor', 'First Floor', 'Second Floor', 'Third Floor', 'Basement', 'Terrace', 'Washrooms', 'Gardens'],

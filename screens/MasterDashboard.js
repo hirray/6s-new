@@ -15,7 +15,7 @@ const ZPOS = [
   {id:7, left:'11.9%', top:'26.6%'},
   {id:8, left:'70.8%', top:'69.2%'}
 ];
-const PulsingDot = ({ pos, color, isActive, onPress }) => {
+const PulsingDot = ({ pos, color, isActive, onPress, text }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -58,7 +58,7 @@ const PulsingDot = ({ pos, color, isActive, onPress }) => {
           }
         ]}
       >
-        <Text style={styles.mapZoneDotText}>{pos.id}</Text>
+        <Text style={styles.mapZoneDotText}>{text !== undefined ? text : pos.id}</Text>
       </Animated.View>
     </TouchableOpacity>
   );
@@ -131,6 +131,16 @@ export default function MasterDashboard() {
           <Text style={styles.number}>{redZones}</Text>
           <Text style={styles.label}>Red Zones</Text>
         </View>
+        
+        {/* Student Connected Metrics */}
+        <View style={[styles.card, { backgroundColor: '#3B82F6' }]}>
+          <Text style={styles.number}>{db.complaints ? db.complaints.length : 0}</Text>
+          <Text style={styles.label}>Student Reports</Text>
+        </View>
+        <View style={[styles.card, { backgroundColor: '#F59E0B' }]}>
+          <Text style={styles.number}>{db.complaints ? db.complaints.filter(c => c.status !== 'Resolved' && c.status !== 'Closed').length : 0}</Text>
+          <Text style={styles.label}>Pending Issues</Text>
+        </View>
       </View>
 
       <View style={styles.mapContainer}>
@@ -162,6 +172,7 @@ export default function MasterDashboard() {
                   color={color}
                   isActive={isActive}
                   onPress={() => handleZonePress(pos.id)}
+                  text={matchingZone ? matchingZone.score : pos.id}
                 />
               )
             })}

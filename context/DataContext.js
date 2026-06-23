@@ -1,20 +1,48 @@
 import React, { createContext, useState, useEffect } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '../firebaseConfig';
 import { signOut } from 'firebase/auth';
+import axios from 'axios';
+
 export const DataContext = createContext();
+
+// Use 10.0.2.2 for Android Emulator, or 10.248.57.42 for physical device on Wi-Fi
+const API_URL = 'http://10.248.57.42:5000/api';
 
 export const DataProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
 
-  const login = (userData) => {
-    setCurrentUser(userData);
+  const login = async (userData) => {
+    try {
+      let finalUserData = { ...userData };
+      
+      // If student, register/login them to backend
+      if (userData.role === 'Student' && userData.email) {
+        try {
+          const res = await axios.post(`${API_URL}/students/login`, {
+            email: userData.email,
+            name: userData.name || userData.id
+          });
+          // Update id to match the MongoDB generated userId
+          finalUserData.id = res.data.userId;
+        } catch (err) {
+          console.error("Failed to register student on backend", err);
+        }
+      }
+
+      setCurrentUser(finalUserData);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const logout = async () => {
     try {
-      await GoogleSignin.signOut();
+      if (Platform.OS !== 'web') {
+        await GoogleSignin.signOut();
+      }
       await signOut(auth);
     } catch (error) {
       console.log('Error during logout:', error);
@@ -23,14 +51,14 @@ export const DataProvider = ({ children }) => {
   };
 
   const [zones, setZones] = useState([
-    { id: '1', name: 'Zone 1 – Anviksha', color: '#1A8C4E', top: '15%', left: '15%', width: 90, height: 80, status: 'Green', score: 92 },
-    { id: '2', name: 'Zone 2 – School of Technology', color: '#B07D10', top: '10%', left: '45%', width: 120, height: 100, status: 'Yellow', score: 76 },
-    { id: '3', name: 'Zone 3 – Common Amenities', color: '#1A8C4E', top: '45%', left: '30%', width: 90, height: 90, status: 'Green', score: 88 },
-    { id: '4', name: 'Zone 4 – Kasturba Bhavan', color: '#1A8C4E', top: '30%', left: '65%', width: 100, height: 70, status: 'Green', score: 94 },
-    { id: '5', name: 'Zone 5 – Vikram Sarabhai Bhavan', color: '#1A8C4E', top: '65%', left: '20%', width: 110, height: 80, status: 'Green', score: 95 },
-    { id: '6', name: 'Zone 6 – Swami Vivekananda Bhavan', color: '#C0182A', top: '70%', left: '55%', width: 100, height: 90, status: 'Red', score: 54 },
-    { id: '7', name: 'Zone 7 – FirePlex', color: '#B07D10', top: '85%', left: '35%', width: 80, height: 60, status: 'Yellow', score: 72 },
-    { id: '8', name: 'Zone 8 – School of Science / Management', color: '#1A8C4E', top: '50%', left: '10%', width: 100, height: 80, status: 'Green', score: 91 },
+    { id: '1', name: 'Zone 1 – Anviksha', color: '#1A8C4E', top: '25%', left: '75%', width: 90, height: 80, status: 'Green', score: 92 },
+    { id: '2', name: 'Zone 2 – School of Technology', color: '#B07D10', top: '40%', left: '60%', width: 120, height: 100, status: 'Yellow', score: 76 },
+    { id: '3', name: 'Zone 3 – Common Amenities', color: '#1A8C4E', top: '52%', left: '68%', width: 90, height: 90, status: 'Green', score: 88 },
+    { id: '4', name: 'Zone 4 – Kasturba Bhavan', color: '#1A8C4E', top: '45%', left: '45%', width: 100, height: 70, status: 'Green', score: 94 },
+    { id: '5', name: 'Zone 5 – Vikram Sarabhai Bhavan', color: '#1A8C4E', top: '55%', left: '42%', width: 110, height: 80, status: 'Green', score: 95 },
+    { id: '6', name: 'Zone 6 – Swami Vivekananda Bhavan', color: '#C0182A', top: '25%', left: '52%', width: 100, height: 90, status: 'Red', score: 54 },
+    { id: '7', name: 'Zone 7 – FirePlex', color: '#B07D10', top: '40%', left: '22%', width: 80, height: 60, status: 'Yellow', score: 72 },
+    { id: '8', name: 'Zone 8 – School of Science / Management', color: '#1A8C4E', top: '72%', left: '75%', width: 100, height: 80, status: 'Green', score: 91 },
   ]);
 
   const [subZones, setSubZones] = useState([
@@ -86,90 +114,99 @@ export const DataProvider = ({ children }) => {
 
   const [db, setDb] = useState(initialDbState);
   const [isDbLoaded, setIsDbLoaded] = useState(false);
+  const [staticData, setStaticData] = useState({
+    zonalHeads: [],
+    subZonalHeads: [],
+    checklists: []
+  });
 
   useEffect(() => {
-    const loadDb = async () => {
+    const fetchFromAPI = async () => {
       try {
-        const savedDb = await AsyncStorage.getItem('@db_state');
-        if (savedDb) {
-          setDb(JSON.parse(savedDb));
-        }
+        const [complaintsRes, advisoriesRes, zhRes, szhRes, clRes, submissionsRes] = await Promise.all([
+          axios.get(`${API_URL}/complaints`),
+          axios.get(`${API_URL}/advisories`),
+          axios.get(`${API_URL}/data/zonalheads`),
+          axios.get(`${API_URL}/data/subzonalheads`),
+          axios.get(`${API_URL}/data/checklists`),
+          axios.get(`${API_URL}/submissions`)
+        ]);
+        
+        setDb(prev => ({
+          ...prev,
+          complaints: complaintsRes.data.map(c => ({ ...c, id: c._id })),
+          advisories: advisoriesRes.data.map(a => ({ ...a, id: a._id })),
+          checklistSubmissions: submissionsRes.data.map(s => ({ ...s, id: s._id }))
+        }));
+        setStaticData({
+          zonalHeads: zhRes.data,
+          subZonalHeads: szhRes.data,
+          checklists: clRes.data
+        });
       } catch (error) {
-        console.error('Failed to load db from storage', error);
+        console.error('Failed to load db from API', error);
       } finally {
         setIsDbLoaded(true);
       }
     };
-    loadDb();
+    fetchFromAPI();
   }, []);
 
-  useEffect(() => {
-    if (isDbLoaded) {
-      AsyncStorage.setItem('@db_state', JSON.stringify(db)).catch(err => console.error('Failed to save db to storage', err));
+  const publishAdvisory = async (targetZone, targetSubZone, text) => {
+    try {
+      const res = await axios.post(`${API_URL}/advisories`, {
+        targetZone, targetSubZone, text, author: currentUser?.name
+      });
+      setDb(prev => ({
+        ...prev,
+        advisories: [res.data, ...prev.advisories]
+      }));
+    } catch (error) {
+      console.error('Error publishing advisory', error);
     }
-  }, [db, isDbLoaded]);
-
-  const publishAdvisory = (targetZone, targetSubZone, text) => {
-    const newAdvisory = {
-      id: Date.now().toString(),
-      targetZone,
-      targetSubZone,
-      text,
-      date: new Date().toLocaleString(),
-      author: currentUser?.name || 'Core Admin',
-      replies: []
-    };
-    setDb(prev => ({
-      ...prev,
-      advisories: [newAdvisory, ...prev.advisories]
-    }));
   };
 
-  const addAdvisoryReply = (advisoryId, replyText) => {
-    setDb(prev => ({
-      ...prev,
-      advisories: prev.advisories.map(adv => 
-        adv.id === advisoryId 
-          ? { 
-              ...adv, 
-              replies: [...adv.replies, { author: currentUser?.name || 'User', text: replyText, date: new Date().toLocaleString() }]
-            } 
-          : adv
-      )
-    }));
+  const addAdvisoryReply = async (advisoryId, replyText) => {
+    try {
+      const res = await axios.post(`${API_URL}/advisories/${advisoryId}/reply`, {
+        text: replyText, author: currentUser?.name
+      });
+      setDb(prev => ({
+        ...prev,
+        advisories: prev.advisories.map(adv => adv.id === advisoryId || adv._id === advisoryId ? res.data : adv)
+      }));
+    } catch (error) {
+      console.error('Error replying to advisory', error);
+    }
   };
 
-  const submitComplaint = (zone, subZone, desc, imageUri) => {
-    const newComplaint = {
-      id: Date.now().toString(),
-      studentId: 'currentStudent',
-      zone,
-      subZone,
-      desc,
-      imageUri,
-      status: 'Pending',
-      date: new Date().toLocaleString(),
-      remarks: []
-    };
-    setDb(prev => ({
-      ...prev,
-      complaints: [newComplaint, ...prev.complaints]
-    }));
+  const submitComplaint = async (zone, subZone, desc, imageUri) => {
+    try {
+      const res = await axios.post(`${API_URL}/complaints`, {
+        studentId: currentUser?.id || 'currentStudent',
+        zone, subZone, desc, imageUri
+      });
+      setDb(prev => ({
+        ...prev,
+        complaints: [{ ...res.data, id: res.data._id }, ...prev.complaints]
+      }));
+    } catch (error) {
+      console.error('Error submitting complaint', error);
+    }
   };
 
-  const resolveComplaint = (complaintId, resolutionText, photoProof) => {
-    setDb(prev => ({
-      ...prev,
-      complaints: prev.complaints.map(c => 
-        c.id === complaintId 
-          ? { 
-              ...c, 
-              status: 'Resolved',
-              remarks: [...(c.remarks || []), { author: currentUser?.name || 'Admin', text: resolutionText, photoProof, date: new Date().toLocaleString() }]
-            }
-          : c
-      )
-    }));
+  const resolveComplaint = async (complaintId, resolutionText, photoProof) => {
+    try {
+      const res = await axios.put(`${API_URL}/complaints/${complaintId}/resolve`, {
+        resolutionText, photoProof, author: currentUser?.name
+      });
+      setDb(prev => ({
+        ...prev,
+        complaints: prev.complaints.map(c => (c.id === complaintId || c._id === complaintId) ? { ...res.data, id: res.data._id } : c)
+      }));
+    } catch (error) {
+      console.error('Error resolving complaint', error);
+    }
   };
 
   const updateZoneScore = (zoneId, newScore) => {
@@ -183,6 +220,25 @@ export const DataProvider = ({ children }) => {
       }
       return z;
     }));
+  };
+
+  const submitChecklist = async (subZonalHeadId, zone, score) => {
+    try {
+      const res = await axios.post(`${API_URL}/submissions`, {
+        subZonalHeadId: subZonalHeadId || 'unknown_id',
+        zone: zone ? zone.toString() : 'Unknown',
+        score: score || 0
+      });
+      setDb(prev => ({
+        ...prev,
+        checklistSubmissions: [res.data, ...prev.checklistSubmissions]
+      }));
+    } catch (error) {
+      console.error('Error submitting checklist', error);
+      if (error.response) {
+        console.error('Backend validation error:', error.response.data);
+      }
+    }
   };
 
   return (
@@ -200,8 +256,10 @@ export const DataProvider = ({ children }) => {
       publishAdvisory,
       submitComplaint,
       resolveComplaint,
+      submitChecklist,
       updateZoneScore,
-      addAdvisoryReply
+      addAdvisoryReply,
+      staticData
     }}>
       {children}
     </DataContext.Provider>

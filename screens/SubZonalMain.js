@@ -6,6 +6,7 @@ import SubZonalHomeStack from './subzonal/SubZonalHomeStack';
 import SubZonalConcerns from './subzonal/SubZonalConcerns';
 import SubZonalHistory from './subzonal/SubZonalHistory';
 import SubZonalProfile from './subzonal/SubZonalProfile';
+import FloatingNavBar from '../components/FloatingNavBar';
 
 export default function SubZonalMain() {
   const [activeTab, setActiveTab] = useState('Home');
@@ -26,39 +27,16 @@ export default function SubZonalMain() {
         {renderContent()}
       </View>
       
-      {/* Bottom Navigation */}
-      <View style={styles.navWrapper}>
-        <View style={styles.navBackground}>
-          
-          <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('Concerns')}>
-            <Ionicons name="alert-circle-outline" size={24} color={activeTab === 'Concerns' ? '#FFFFFF' : '#FCA5A5'} />
-            <Text style={[styles.navText, activeTab === 'Concerns' && styles.activeNavText]}>Concerns</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('History')}>
-            <Ionicons name="calendar-outline" size={24} color={activeTab === 'History' ? '#FFFFFF' : '#FCA5A5'} />
-            <Text style={[styles.navText, activeTab === 'History' && styles.activeNavText]}>History</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('Profile')}>
-            <Ionicons name="person-outline" size={24} color={activeTab === 'Profile' ? '#FFFFFF' : '#FCA5A5'} />
-            <Text style={[styles.navText, activeTab === 'Profile' && styles.activeNavText]}>Profile</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Protruding Home Tab (Left Aligned over the background) */}
-        <View style={styles.homeTabContainer}>
-          <TouchableOpacity 
-            style={styles.homeTabInner}
-            onPress={() => setActiveTab('Home')}
-            activeOpacity={0.9}
-          >
-            <Ionicons name="home-outline" size={24} color={activeTab === 'Home' ? '#8C1B2F' : '#6B7280'} />
-            <Text style={[styles.homeNavText, activeTab === 'Home' && styles.activeHomeNavText]}>Home</Text>
-          </TouchableOpacity>
-        </View>
-
-      </View>
+      <FloatingNavBar 
+        tabs={[
+          { key: 'Home', icon: 'home-outline', activeIcon: 'home', label: 'Home' },
+          { key: 'Concerns', icon: 'alert-circle-outline', activeIcon: 'alert-circle', label: 'Concerns' },
+          { key: 'History', icon: 'calendar-outline', activeIcon: 'calendar', label: 'History' },
+          { key: 'Profile', icon: 'person-outline', activeIcon: 'person', label: 'Profile' }
+        ]}
+        activeTab={activeTab}
+        onTabPress={setActiveTab}
+      />
     </View>
   );
 }

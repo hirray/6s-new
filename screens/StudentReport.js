@@ -1,9 +1,10 @@
 import React, { useState, useContext } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert, Modal, Image, SafeAreaView } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert, Modal, Image, SafeAreaView, Platform, StatusBar } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { DataContext } from '../context/DataContext';
-
+import StudentProfile from './StudentProfile';
+import FloatingNavBar from '../components/FloatingNavBar';
 const CATEGORIES = [
   { id: 'Cleanliness', icon: 'trash-outline', iconFamily: 'Ionicons', color: '#1A8C4E' },
   { id: 'Electrical', icon: 'flash', iconFamily: 'Ionicons', color: '#611624' },
@@ -117,12 +118,12 @@ const ZONE_DATA = [
 ];
 
 const MOCK_REPORTS = [
-  { 
-    id: 'GSFC-2026-00124', 
-    title: 'Electrical Concern', 
-    location: 'Robotic Lab , Anviksha', 
-    status: 'In Progress', 
-    date: '17 June 2026, 10:30 AM', 
+  {
+    id: 'GSFC-2026-00124',
+    title: 'Electrical Concern',
+    location: 'Robotic Lab , Anviksha',
+    status: 'In Progress',
+    date: '17 June 2026, 10:30 AM',
     categoryId: 'Electrical',
     reportedBy: 'Student',
     priority: 'Medium',
@@ -135,12 +136,12 @@ const MOCK_REPORTS = [
       { title: 'Resolved', time: 'Pending', state: 'pending' }
     ]
   },
-  { 
-    id: 'GSFC-2026-00108', 
-    title: 'Water Leakage', 
-    location: '3rd Floor Washroom, SOT', 
-    status: 'Resolved', 
-    date: '15 June 2026, 09:30 AM', 
+  {
+    id: 'GSFC-2026-00108',
+    title: 'Water Leakage',
+    location: '3rd Floor Washroom, SOT',
+    status: 'Resolved',
+    date: '15 June 2026, 09:30 AM',
     categoryId: 'Water',
     reportedBy: 'Faculty',
     priority: 'High',
@@ -153,12 +154,12 @@ const MOCK_REPORTS = [
       { title: 'Resolved', time: '15 June 2026 , 03:00 PM', state: 'completed' }
     ]
   },
-  { 
-    id: 'GSFC-2026-00095', 
-    title: 'Broken Chair', 
-    location: 'Cr 201 , SOS', 
-    status: 'Closed', 
-    date: '10 June 2026, 02:45 PM', 
+  {
+    id: 'GSFC-2026-00095',
+    title: 'Broken Chair',
+    location: 'Cr 201 , SOS',
+    status: 'Closed',
+    date: '10 June 2026, 02:45 PM',
     categoryId: 'Furniture',
     reportedBy: 'Admin',
     priority: 'Low',
@@ -173,14 +174,14 @@ const MOCK_REPORTS = [
 ];
 
 export default function StudentReport({ navigation }) {
-  const { currentUser, submitComplaint, logout } = useContext(DataContext);
-  
+  const { currentUser, submitComplaint, logout, db } = useContext(DataContext);
+
   const [activeTab, setActiveTab] = useState('home'); // 'home', 'reports', 'profile'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedReport, setSelectedReport] = useState(null);
 
   const [selectedCategory, setSelectedCategory] = useState(null);
-  
+
   const [selectedZone, setSelectedZone] = useState(null);
   const [showZonePicker, setShowZonePicker] = useState(false);
 
@@ -193,16 +194,45 @@ export default function StudentReport({ navigation }) {
   const availableSubZones = selectedZone ? ZONE_DATA.find(z => z.id === selectedZone.id)?.subZones || [] : [];
 
   const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
-    }
+    Alert.alert(
+      "Upload Photo",
+      "Choose an option",
+      [
+        {
+          text: "Take Photo",
+          onPress: async () => {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Permission Denied', 'Sorry, we need camera permissions to make this work!');
+              return;
+            }
+            let result = await ImagePicker.launchCameraAsync({
+              allowsEditing: true,
+              aspect: [4, 3],
+              quality: 1,
+            });
+            if (!result.canceled) {
+              setImageUri(result.assets[0].uri);
+            }
+          }
+        },
+        {
+          text: "Choose from Library",
+          onPress: async () => {
+            let result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              aspect: [4, 3],
+              quality: 1,
+            });
+            if (!result.canceled) {
+              setImageUri(result.assets[0].uri);
+            }
+          }
+        },
+        { text: "Cancel", style: "cancel" }
+      ]
+    );
   };
 
   const handleSubmit = () => {
@@ -222,7 +252,7 @@ export default function StudentReport({ navigation }) {
       Alert.alert('Error', 'Please describe the concern.');
       return;
     }
-    
+
     submitComplaint(selectedZone.name, selectedCategory, `[${selectedSubZone.name}] ` + issueText, imageUri);
     Alert.alert('Report Submitted', `Your concern has been submitted successfully.`);
     setIssueText('');
@@ -266,7 +296,7 @@ export default function StudentReport({ navigation }) {
             let iconColor = '#D1D5DB';
             let iconInner = null;
             let titleColor = '#6B7280';
-            
+
             if (step.state === 'completed') {
               iconColor = '#611624';
               iconInner = <Ionicons name="checkmark" size={14} color="#FFF" />;
@@ -281,7 +311,7 @@ export default function StudentReport({ navigation }) {
               <View key={index} style={styles.timelineRow}>
                 <View style={styles.timelineIconColumn}>
                   <View style={[
-                    styles.timelineIcon, 
+                    styles.timelineIcon,
                     { borderColor: iconColor, backgroundColor: step.state === 'completed' ? '#611624' : '#FFFFFF' }
                   ]}>
                     {iconInner}
@@ -307,7 +337,7 @@ export default function StudentReport({ navigation }) {
 
   const renderReportDetails = () => {
     const categoryObj = CATEGORIES.find(c => c.id === selectedReport.categoryId) || CATEGORIES[7];
-    
+
     return (
       <View style={styles.reportsContainer}>
         {/* Header */}
@@ -322,7 +352,7 @@ export default function StudentReport({ navigation }) {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-          
+
           {/* Main Card */}
           <View style={styles.detailsCard}>
             <View style={styles.detailsCardHeader}>
@@ -337,7 +367,7 @@ export default function StudentReport({ navigation }) {
               </View>
               {renderStatusBadge(selectedReport.status)}
             </View>
-            
+
             <View style={styles.detailsGrid}>
               <View style={styles.detailsGridItem}>
                 <Text style={styles.detailsGridLabel}>Reported By</Text>
@@ -404,7 +434,7 @@ export default function StudentReport({ navigation }) {
       <View style={styles.searchRow}>
         <View style={styles.searchBar}>
           <Ionicons name="search" size={20} color="#9CA3AF" />
-          <TextInput 
+          <TextInput
             style={styles.searchInput}
             placeholder="Search reports..."
             value={searchQuery}
@@ -418,7 +448,22 @@ export default function StudentReport({ navigation }) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        {MOCK_REPORTS.filter(r => r.title.toLowerCase().includes(searchQuery.toLowerCase())).map((report) => {
+        {db.complaints.filter(c => c.studentId === currentUser?.id).map(c => ({
+          id: c.id || c._id,
+          title: c.subZone || 'Campus Concern',
+          location: c.zone,
+          status: c.status,
+          date: c.date,
+          categoryId: c.subZone || 'Other',
+          reportedBy: 'Student',
+          priority: 'Medium',
+          description: c.desc,
+          image: c.imageUri || null,
+          timeline: [
+            { title: 'Report Submitted', time: c.date, state: 'completed' },
+            ...(c.status === 'Resolved' ? [{ title: 'Resolved', time: (c.remarks && c.remarks.length > 0) ? c.remarks[c.remarks.length - 1].date : c.date, state: 'completed' }] : [{ title: 'Under Review', time: 'Pending', state: 'current' }])
+          ]
+        })).filter(r => r.title.toLowerCase().includes(searchQuery.toLowerCase())).map((report) => {
           const categoryObj = CATEGORIES.find(c => c.id === report.categoryId) || CATEGORIES[7];
           return (
             <TouchableOpacity key={report.id} style={styles.reportCard} onPress={() => setSelectedReport(report)}>
@@ -434,7 +479,7 @@ export default function StudentReport({ navigation }) {
                 </View>
                 {renderStatusBadge(report.status)}
               </View>
-              
+
               <View style={styles.reportCardFooter}>
                 <View style={styles.reportMeta}>
                   <Text style={styles.reportMetaLabel}>Submitted On</Text>
@@ -484,7 +529,7 @@ export default function StudentReport({ navigation }) {
 
   const renderHomeForm = () => (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      
+
       {/* Custom Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
@@ -503,7 +548,7 @@ export default function StudentReport({ navigation }) {
           <Text style={styles.subTitle}>Report and track campus concerns</Text>
         </View>
         <View style={styles.illustrationContainer}>
-           <Image source={require('../assets/student_sweeping.jpg')} style={styles.illustration} resizeMode="contain" />
+          <Image source={require('../assets/student_reporting_issue.png')} style={styles.illustration} resizeMode="contain" />
         </View>
       </View>
 
@@ -513,8 +558,8 @@ export default function StudentReport({ navigation }) {
         {CATEGORIES.map((cat) => {
           const isSelected = selectedCategory === cat.id;
           return (
-            <TouchableOpacity 
-              key={cat.id} 
+            <TouchableOpacity
+              key={cat.id}
               style={[styles.categoryCard, isSelected && styles.categoryCardSelected]}
               onPress={() => setSelectedCategory(cat.id)}
             >
@@ -561,8 +606,8 @@ export default function StudentReport({ navigation }) {
           <Text style={styles.locationLabel}>
             <MaterialCommunityIcons name="layers-outline" size={14} color="#7A4050" /> SUB-ZONE AREA
           </Text>
-          <TouchableOpacity 
-            style={[styles.locationInputBox, !selectedZone && styles.locationInputDisabled]} 
+          <TouchableOpacity
+            style={[styles.locationInputBox, !selectedZone && styles.locationInputDisabled]}
             onPress={() => selectedZone ? setShowSubZonePicker(true) : null}
           >
             <Text style={[styles.locationInputText, !selectedSubZone && styles.locationPlaceholder]}>
@@ -580,10 +625,10 @@ export default function StudentReport({ navigation }) {
             <Text style={styles.modalHeader}>Select Zone</Text>
             <ScrollView style={{ maxHeight: 350 }}>
               {ZONE_DATA.map(z => (
-                <TouchableOpacity key={z.id} style={styles.modalItem} onPress={() => { 
-                  setSelectedZone(z); 
+                <TouchableOpacity key={z.id} style={styles.modalItem} onPress={() => {
+                  setSelectedZone(z);
                   setSelectedSubZone(null); // Reset sub-zone
-                  setShowZonePicker(false); 
+                  setShowZonePicker(false);
                 }}>
                   <Text style={[styles.modalItemText, selectedZone?.id === z.id && styles.modalItemTextSelected]}>{z.name}</Text>
                 </TouchableOpacity>
@@ -600,9 +645,9 @@ export default function StudentReport({ navigation }) {
             <Text style={styles.modalHeader}>Select Sub-Zone Area</Text>
             <ScrollView style={{ maxHeight: 200, minHeight: 150 }} showsVerticalScrollIndicator={true}>
               {availableSubZones.map(sz => (
-                <TouchableOpacity key={sz.id} style={styles.modalItem} onPress={() => { 
-                  setSelectedSubZone(sz); 
-                  setShowSubZonePicker(false); 
+                <TouchableOpacity key={sz.id} style={styles.modalItem} onPress={() => {
+                  setSelectedSubZone(sz);
+                  setShowSubZonePicker(false);
                 }}>
                   <Text style={[styles.modalItemText, selectedSubZone?.id === sz.id && styles.modalItemTextSelected]}>{sz.name}</Text>
                 </TouchableOpacity>
@@ -649,32 +694,24 @@ export default function StudentReport({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      
+
       {activeTab === 'home' && renderHomeForm()}
       {activeTab === 'reports' && (selectedReport ? renderReportDetails() : renderReportsList())}
-      {activeTab === 'profile' && renderProfile()}
+      {activeTab === 'profile' && <StudentProfile />}
 
-      {/* Custom Bottom Navigation Bar */}
-      <View style={styles.bottomBarContainer}>
-        <View style={styles.bottomBarBackground} />
-        
-        <TouchableOpacity style={styles.navItem} onPress={() => { setActiveTab('home'); setSelectedReport(null); }}>
-          <Ionicons name="home" size={26} color={activeTab === 'home' ? "#FFFFFF" : "rgba(255,255,255,0.5)"} />
-        </TouchableOpacity>
-        
-        <View style={styles.fabContainer}>
-          <TouchableOpacity 
-            style={[styles.fabButton, activeTab === 'reports' && styles.fabButtonActive]} 
-            onPress={() => { setActiveTab('reports'); setSelectedReport(null); }}
-          >
-            <Ionicons name="document-text" size={28} color={activeTab === 'reports' ? "#611624" : "#8C1B2F"} />
-          </TouchableOpacity>
-        </View>
+      <FloatingNavBar
+        tabs={[
+          { key: 'home', icon: 'home-outline', activeIcon: 'home', label: 'Home' },
+          { key: 'reports', icon: 'document-text-outline', activeIcon: 'document-text', label: 'Reports' },
+          { key: 'profile', icon: 'person-outline', activeIcon: 'person', label: 'Profile' }
+        ]}
+        activeTab={activeTab}
+        onTabPress={(tab) => {
+          setActiveTab(tab);
+          setSelectedReport(null);
+        }}
+      />
 
-        <TouchableOpacity style={styles.navItem} onPress={() => { setActiveTab('profile'); setSelectedReport(null); }}>
-          <Ionicons name="person" size={26} color={activeTab === 'profile' ? "#FFFFFF" : "rgba(255,255,255,0.5)"} />
-        </TouchableOpacity>
-      </View>
 
     </SafeAreaView>
   );
@@ -684,6 +721,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#FBF7F2',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   container: {
     flex: 1,
@@ -710,7 +748,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
   },
   titleTextContainer: {
     flex: 1,
@@ -734,8 +771,6 @@ const styles = StyleSheet.create({
     borderRadius: 70,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: -10,
-    marginTop: -20,
     zIndex: 1,
   },
   illustration: {
@@ -876,6 +911,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     borderRadius: 12,
     padding: 16,
+    marginBottom: 20,
   },
   uploadButtonText: {
     marginLeft: 8,
@@ -1141,7 +1177,7 @@ const styles = StyleSheet.create({
     color: '#8C1B2F',
     fontWeight: '600',
   },
-  
+
   /* Details Screen Styles */
   detailsCard: {
     backgroundColor: '#FFFFFF',
