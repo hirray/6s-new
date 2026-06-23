@@ -5,6 +5,8 @@ import { DataContext } from '../context/DataContext';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
+import { SUB_ZONAL_HEADS } from '../data/subZonalHeads';
+import { ZONAL_HEADS } from '../data/zonalHeads';
 
 const { width, height } = Dimensions.get('window');
 
@@ -116,12 +118,37 @@ export default function LoginScreen() {
 
     if ((id === 'admin' || id === 'admin@gsfc.edu') && pass === 'admin') {
       login({ role: 'Admin', id: 'ADMIN_1', name: 'Core Committee' });
+    } else if (SUB_ZONAL_HEADS.some(head => head.email === id)) {
+      if (pass === '12334') {
+        const subZonalHeadInfo = SUB_ZONAL_HEADS.find(head => head.email === id);
+        login({ 
+          role: 'SubZonalHead', 
+          id: subZonalHeadInfo.id, 
+          name: subZonalHeadInfo.name,
+          data: subZonalHeadInfo 
+        });
+      } else {
+        setErrorText('Invalid password.');
+      }
     } else if ((id === 'subzone' || id === 'subzone@gsfc.edu') && pass === 'subzone') {
+      // Fallback for the old test subzonal head
       login({ role: 'SubZonalHead', id: 'SZH_F1', name: 'Mr. Rajesh Patel' });
     } else if ((id === 'student' || id === 'student@gsfc.edu') && pass === 'student') {
       login({ role: 'Student', id: 'STU_1', name: 'Test Student' });
     } else if (id === '24bt04d224@gsfcuniversity.ac.in') {
       login({ role: 'Student', id: 'STU_1', name: 'Hirra' });
+    } else if (ZONAL_HEADS.some(head => head.email === id)) {
+      if (pass === '12334') {
+        const zonalHeadInfo = ZONAL_HEADS.find(head => head.email === id);
+        login({ 
+          role: 'ZonalHead', 
+          id: zonalHeadInfo.id, 
+          name: zonalHeadInfo.name, 
+          data: zonalHeadInfo 
+        });
+      } else {
+        setErrorText('Invalid password.');
+      }
     } else if (id.startsWith('zone') && pass.startsWith('zone')) {
       const zoneNumber = parseInt(id.replace('zone', ''), 10);
       if (zoneNumber >= 1 && zoneNumber <= 8) {
@@ -136,7 +163,7 @@ export default function LoginScreen() {
         setErrorText('Invalid zone. Try zone1 through zone8.');
       }
     } else {
-      setErrorText('Invalid credentials. Try admin/admin, student/student, or zone1/zone1.');
+      setErrorText('Invalid credentials. Try admin/admin, student/student, or your official email.');
     }
   };
 

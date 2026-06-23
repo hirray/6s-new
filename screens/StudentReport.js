@@ -463,20 +463,20 @@ export default function StudentReport({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
           <Ionicons name="arrow-back" size={24} color="#8C1B2F" />
         </TouchableOpacity>
-        <Image source={require('../assets/logo.png')} style={styles.logo} resizeMode="contain" />
-        <TouchableOpacity style={styles.headerIcon} onPress={logout}>
-          <Ionicons name="log-out-outline" size={26} color="#8C1B2F" />
+        <Image source={require('../assets/gsfc_logo_new.jpg')} style={styles.logo} resizeMode="contain" />
+        <TouchableOpacity style={styles.headerIcon}>
+          <Ionicons name="notifications-outline" size={26} color="#8C1B2F" />
         </TouchableOpacity>
       </View>
 
       {/* Title and Illustration */}
       <View style={styles.titleSection}>
         <View style={styles.titleTextContainer}>
-          <Text style={styles.mainTitle}>6S Campus</Text>
+          <Text style={styles.mainTitle}>Campus Issues</Text>
           <Text style={styles.subTitle}>Report and track campus concerns</Text>
         </View>
         <View style={styles.illustrationContainer}>
-           <Image source={require('../home1.png')} style={styles.illustration} resizeMode="cover" />
+           <Image source={require('../assets/student_sweeping.jpg')} style={styles.illustration} resizeMode="contain" />
         </View>
       </View>
 
@@ -675,8 +675,8 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   logo: {
-    height: 40,
-    width: 120,
+    height: 50,
+    width: 160,
   },
   titleSection: {
     flexDirection: 'row',
@@ -687,6 +687,7 @@ const styles = StyleSheet.create({
   titleTextContainer: {
     flex: 1,
     paddingRight: 10,
+    zIndex: 2,
   },
   mainTitle: {
     fontSize: 28,
@@ -699,17 +700,19 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   illustrationContainer: {
-    width: 100,
-    height: 100,
+    width: 140,
+    height: 140,
     backgroundColor: '#F3E9DD',
-    borderRadius: 50,
+    borderRadius: 70,
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
+    marginRight: -10,
+    marginTop: -20,
+    zIndex: 1,
   },
   illustration: {
-    width: 80,
-    height: 80,
+    width: 120,
+    height: 120,
   },
   sectionTitle: {
     fontSize: 15,

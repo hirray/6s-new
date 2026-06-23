@@ -11,6 +11,9 @@ import AllZones from './screens/AllZones';
 import Advisories from './screens/Advisories';
 import StudentReport from './screens/StudentReport';
 import SubZonalAudit from './screens/SubZonalAudit';
+import SubZonalMain from './screens/SubZonalMain';
+import ZonalMain from './screens/zonal/ZonalMain';
+import AdminMain from './screens/admin/AdminMain';
 import ZonalDashboard from './screens/ZonalDashboard';
 import LoginScreen from './screens/LoginScreen';
 import { DataProvider, DataContext } from './context/DataContext';
@@ -22,6 +25,30 @@ function MainNavigator() {
 
   if (!currentUser) {
     return <LoginScreen />;
+  }
+
+  if (currentUser.role === 'SubZonalHead') {
+    return (
+      <NavigationContainer>
+        <SubZonalMain />
+      </NavigationContainer>
+    );
+  }
+
+  if (currentUser.role === 'ZonalHead') {
+    return (
+      <NavigationContainer>
+        <ZonalMain />
+      </NavigationContainer>
+    );
+  }
+
+  if (currentUser.role === 'Admin') {
+    return (
+      <NavigationContainer>
+        <AdminMain />
+      </NavigationContainer>
+    );
   }
 
   return (
@@ -78,15 +105,11 @@ function MainNavigator() {
           <Tab.Screen name="Dashboard" component={MasterDashboard} options={{ title: 'Admin' }} />
         )}
         
-        {currentUser?.role === 'ZonalHead' && (
-          <Tab.Screen name="ZonalDashboard" component={ZonalDashboard} options={{ title: 'My Zone' }} />
-        )}
-
-        {(currentUser?.role === 'Admin' || currentUser?.role === 'ZonalHead' || currentUser?.role === 'SubZonalHead') && (
+        {(currentUser?.role === 'Admin') && (
           <Tab.Screen name="AllZones" component={AllZones} options={{ title: 'Analysis' }} />
         )}
 
-        {(currentUser?.role === 'Admin' || currentUser?.role === 'SubZonalHead') && (
+        {(currentUser?.role === 'Admin') && (
           <Tab.Screen name="SubZonalAudit" component={SubZonalAudit} options={{ title: 'Audit' }} />
         )}
 
