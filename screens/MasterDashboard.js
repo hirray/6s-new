@@ -84,7 +84,12 @@ export default function MasterDashboard() {
   // Dynamically compute details for the active zone
   let activeDetails = null;
   if (activeZone) {
-    const zoneComplaints = db.complaints.filter(c => (c.zone === activeZone.name || c.zone.includes(`Zone ${activeZone.id}`)) && c.status === 'Pending');
+    const extractZoneNumber = (zoneStr) => {
+      if (!zoneStr) return null;
+      const match = zoneStr.match(/Zone\s*0?(\d+)/i);
+      return match ? parseInt(match[1], 10) : null;
+    };
+    const zoneComplaints = db.complaints.filter(c => extractZoneNumber(c.zone) === parseInt(activeZone.id, 10) && c.status === 'Pending');
     
     // Find submissions for SZHs in this zone
     const zoneSZHs = SZH.filter(s => s.zone === parseInt(activeZone.id));

@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../context/DataContext';
 
 export default function Advisories() {
-  const { db, publishAdvisory, addAdvisoryReply, SZH } = useContext(DataContext);
+  const { currentUser, db, publishAdvisory, addAdvisoryReply, SZH } = useContext(DataContext);
   
   const [advisoryText, setAdvisoryText] = useState('');
   
@@ -52,8 +52,9 @@ export default function Advisories() {
   return (
     <ScrollView style={styles.container}>
       {/* Publish Form */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Publish Global Advisory</Text>
+      {currentUser?.role === 'Admin' && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Publish Global Advisory</Text>
         
         {/* Target Zone */}
         <View style={styles.inputGroup}>
@@ -153,10 +154,11 @@ export default function Advisories() {
           />
         </View>
 
-        <TouchableOpacity style={styles.primaryButton} onPress={handlePublish}>
-          <Text style={styles.primaryButtonText}>Publish & Notify →</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity style={styles.primaryButton} onPress={handlePublish}>
+            <Text style={styles.primaryButtonText}>Publish & Notify →</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* History & Replies */}
       <View style={styles.card}>

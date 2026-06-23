@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import ZonalHomeStack from './ZonalHomeStack';
 import ZonalInspection from './ZonalInspection';
 import ZonalProfile from './ZonalProfile';
+import Advisories from '../Advisories';
 
 export default function ZonalMain() {
   const [activeTab, setActiveTab] = useState('Home');
@@ -13,6 +14,7 @@ export default function ZonalMain() {
     switch(activeTab) {
       case 'Home': return <ZonalHomeStack />;
       case 'Inspection': return <ZonalInspection />;
+      case 'Advisories': return <Advisories />;
       case 'Profile': return <ZonalProfile />;
       default: return <ZonalHomeStack />;
     }
@@ -31,6 +33,11 @@ export default function ZonalMain() {
           <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('Inspection')}>
             <Ionicons name="clipboard-outline" size={24} color={activeTab === 'Inspection' ? '#FFFFFF' : '#FCA5A5'} />
             <Text style={[styles.navText, activeTab === 'Inspection' && styles.activeNavText]}>Inspection</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('Advisories')}>
+            <Ionicons name="notifications-outline" size={24} color={activeTab === 'Advisories' ? '#FFFFFF' : '#FCA5A5'} />
+            <Text style={[styles.navText, activeTab === 'Advisories' && styles.activeNavText]}>Alerts</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('Profile')}>

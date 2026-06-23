@@ -24,11 +24,20 @@ export default function SubZonalAudit() {
     }
   };
 
-  // Mock finding the Sub-Zonal Head's assigned zone info based on currentUser ID
-  // In a real app, currentUser.data would contain this directly.
-  const myZone = currentUser?.id === 'SZH_F1' ? 'Zone 1 – Anviksha' : 'All Zones';
+  const myZone = currentUser?.data?.zone || (currentUser?.id === 'SZH_F1' ? 'Zone 1 – Anviksha' : 'All Zones');
 
-  const myComplaints = db.complaints.filter(c => c.zone === myZone || c.zone.includes('Zone 1'));
+  const extractZoneNumber = (zoneStr) => {
+    if (!zoneStr) return null;
+    const match = zoneStr.match(/Zone\s*0?(\d+)/i);
+    return match ? parseInt(match[1], 10) : null;
+  };
+
+  const myComplaints = db.complaints.filter(c => {
+    if (currentUser?.role === 'Admin') return true;
+    const myZoneNum = currentUser?.data ? extractZoneNumber(currentUser.data.zone) : (currentUser?.id === 'SZH_F1' ? 1 : null);
+    if (!myZoneNum) return true;
+    return extractZoneNumber(c.zone) === myZoneNum;
+  });
 
   const toggleCheck = (index) => {
     if (checkedItems.includes(index)) {

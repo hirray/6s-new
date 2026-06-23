@@ -1,4 +1,5 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '../firebaseConfig';
 import { signOut } from 'firebase/auth';
@@ -71,7 +72,7 @@ export const DataProvider = ({ children }) => {
     "Waste Management: Are dustbins cleared and segregated?"
   ];
 
-  const [db, setDb] = useState({
+  const initialDbState = {
     complaints: [
       { id: '1', studentId: 'stu1', zone: 'Zone 1 – Anviksha', subZone: 'Ground Floor', desc: 'Broken dustbin on 2nd floor.', status: 'Pending', date: 'Today', remarks: [], imageUri: null }
     ],
@@ -81,7 +82,32 @@ export const DataProvider = ({ children }) => {
       { id: '1', targetZone: 'All Zones', targetSubZone: 'All Sub-Zones', text: 'Ensure all fire extinguishers are inspected by Friday.', date: 'Today, 10:00 AM', author: 'Core Admin', replies: [] },
       { id: '2', targetZone: 'Zone 1 – Anviksha', targetSubZone: 'Ground Floor / Block A', text: 'Corridor lights need immediate replacement.', date: 'Yesterday, 2:30 PM', author: 'Zone Supervisor', replies: [{ author: 'Mr. Rajesh Patel', text: 'Lights replaced today morning.', date: 'Today, 9:00 AM' }] },
     ]
-  });
+  };
+
+  const [db, setDb] = useState(initialDbState);
+  const [isDbLoaded, setIsDbLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadDb = async () => {
+      try {
+        const savedDb = await AsyncStorage.getItem('@db_state');
+        if (savedDb) {
+          setDb(JSON.parse(savedDb));
+        }
+      } catch (error) {
+        console.error('Failed to load db from storage', error);
+      } finally {
+        setIsDbLoaded(true);
+      }
+    };
+    loadDb();
+  }, []);
+
+  useEffect(() => {
+    if (isDbLoaded) {
+      AsyncStorage.setItem('@db_state', JSON.stringify(db)).catch(err => console.error('Failed to save db to storage', err));
+    }
+  }, [db, isDbLoaded]);
 
   const publishAdvisory = (targetZone, targetSubZone, text) => {
     const newAdvisory = {

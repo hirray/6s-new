@@ -5,10 +5,17 @@ import { DataContext } from '../../context/DataContext';
 export default function ZonalInspection() {
   const { currentUser, db } = useContext(DataContext);
   
-  // Filter complaints based on the current user's zone. 
+  const extractZoneNumber = (zoneStr) => {
+    if (!zoneStr) return null;
+    const match = zoneStr.match(/Zone\s*0?(\d+)/i);
+    return match ? parseInt(match[1], 10) : null;
+  };
+
   const myComplaints = db.complaints.filter(c => {
     if (!currentUser?.data) return true; 
-    return c.zone.includes(currentUser.data.zone) || currentUser.data.zone.includes(c.zone);
+    const cZoneNum = extractZoneNumber(c.zone);
+    const userZoneNum = extractZoneNumber(currentUser.data.zone);
+    return cZoneNum && userZoneNum && cZoneNum === userZoneNum;
   });
 
   return (

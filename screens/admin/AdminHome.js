@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, ImageBackground, TouchableOpacity, Modal, TouchableWithoutFeedback } from 'react-native';
+import React, { useState, useContext } from 'react';
+import { StyleSheet, Text, View, ImageBackground, TouchableOpacity, Modal, TouchableWithoutFeedback, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { DataContext } from '../../context/DataContext';
 
 // Hardcoded zone positions relative to a square/rectangle map container
 // These would need to be tweaked depending on the actual image aspect ratio
@@ -16,7 +17,13 @@ const ZONE_MARKERS = [
 ];
 
 export default function AdminHome() {
+  const { zones } = useContext(DataContext);
   const [selectedZone, setSelectedZone] = useState(null);
+
+  const totalZones = zones.length;
+  const greenZones = zones.filter(z => z.status === 'Green').length;
+  const yellowZones = zones.filter(z => z.status === 'Yellow').length;
+  const redZones = zones.filter(z => z.status === 'Red').length;
 
   const getMarkerColor = (status) => {
     switch(status) {
@@ -28,7 +35,28 @@ export default function AdminHome() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 30 }}>
+      <View style={styles.summaryContainer}>
+        <View style={styles.grid}>
+          <View style={[styles.card, styles.maroonCard]}>
+            <Text style={styles.number}>{totalZones}</Text>
+            <Text style={styles.label}>Total Zones</Text>
+          </View>
+          <View style={[styles.card, styles.greenCard]}>
+            <Text style={styles.number}>{greenZones}</Text>
+            <Text style={styles.label}>Green Zones</Text>
+          </View>
+          <View style={[styles.card, styles.yellowCard]}>
+            <Text style={styles.number}>{yellowZones}</Text>
+            <Text style={styles.label}>Yellow Zones</Text>
+          </View>
+          <View style={[styles.card, styles.redCard]}>
+            <Text style={styles.number}>{redZones}</Text>
+            <Text style={styles.label}>Red Zones</Text>
+          </View>
+        </View>
+      </View>
+
       <View style={styles.header}>
         <Text style={styles.title}>Live Campus Zone Map</Text>
         <Text style={styles.subtitle}>Tap a zone marker to view progress</Text>
@@ -122,13 +150,47 @@ export default function AdminHome() {
           </TouchableWithoutFeedback>
         </Modal>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAF8' },
-  header: { padding: 20, paddingTop: 40, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  summaryContainer: { padding: 16, paddingTop: 20 },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  card: {
+    width: '48%',
+    padding: 20,
+    borderRadius: 14,
+    marginBottom: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#1C0A0E',
+    shadowOpacity: 0.12,
+    shadowOffset: {width: 0, height: 4},
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  maroonCard: { backgroundColor: '#8C1B2F' },
+  greenCard: { backgroundColor: '#1A8C4E' },
+  yellowCard: { backgroundColor: '#B07D10' },
+  redCard: { backgroundColor: '#C0182A' },
+  number: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  label: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '600',
+  },
+  header: { paddingHorizontal: 20, paddingBottom: 10, paddingTop: 10, backgroundColor: '#FAFAF8' },
   title: { fontSize: 20, fontWeight: 'bold', color: '#8C1B2F' },
   subtitle: { fontSize: 13, color: '#6B7280', marginTop: 4 },
   mapContainer: { flex: 1, backgroundColor: '#374151', margin: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 2, borderColor: '#8C1B2F' },

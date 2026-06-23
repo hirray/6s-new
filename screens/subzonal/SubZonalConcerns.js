@@ -7,11 +7,17 @@ export default function SubZonalConcerns() {
   const { currentUser, db, resolveComplaint } = useContext(DataContext);
   const [resolutions, setResolutions] = useState({});
 
-  // Filter complaints based on the current user's zone. 
-  // In a full app, we might also filter by subZone exactly.
+  const extractZoneNumber = (zoneStr) => {
+    if (!zoneStr) return null;
+    const match = zoneStr.match(/Zone\s*0?(\d+)/i);
+    return match ? parseInt(match[1], 10) : null;
+  };
+
   const myComplaints = db.complaints.filter(c => {
     if (!currentUser?.data) return true; // fallback
-    return c.zone.includes(currentUser.data.zone) || currentUser.data.zone.includes(c.zone);
+    const cZoneNum = extractZoneNumber(c.zone);
+    const userZoneNum = extractZoneNumber(currentUser.data.zone);
+    return cZoneNum && userZoneNum && cZoneNum === userZoneNum;
   });
 
   return (
