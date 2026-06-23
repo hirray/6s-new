@@ -173,7 +173,7 @@ const MOCK_REPORTS = [
 ];
 
 export default function StudentReport({ navigation }) {
-  const { submitComplaint, logout } = useContext(DataContext);
+  const { currentUser, submitComplaint, logout } = useContext(DataContext);
   
   const [activeTab, setActiveTab] = useState('home'); // 'home', 'reports', 'profile'
   const [searchQuery, setSearchQuery] = useState('');
@@ -455,6 +455,33 @@ export default function StudentReport({ navigation }) {
     </View>
   );
 
+  const renderProfile = () => {
+    return (
+      <ScrollView style={styles.profileContainer}>
+        <View style={styles.profileHeader}>
+          <View style={styles.profileAvatar}>
+            <Ionicons name="person" size={40} color="#8C1B2F" />
+          </View>
+          <Text style={styles.profileName}>{currentUser?.name || 'Student'}</Text>
+          <Text style={styles.profileRole}>Student</Text>
+        </View>
+
+        <View style={styles.profileCard}>
+          <Text style={styles.profileSectionTitle}>Contact Info</Text>
+          <View style={styles.profileRow}>
+            <Text style={styles.profileLabel}>Email:</Text>
+            <Text style={styles.profileValue}>{currentUser?.email || 'student@gsfc.edu'}</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+          <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.logoutButtonText}>Log Out</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    );
+  };
+
   const renderHomeForm = () => (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       
@@ -625,6 +652,7 @@ export default function StudentReport({ navigation }) {
       
       {activeTab === 'home' && renderHomeForm()}
       {activeTab === 'reports' && (selectedReport ? renderReportDetails() : renderReportsList())}
+      {activeTab === 'profile' && renderProfile()}
 
       {/* Custom Bottom Navigation Bar */}
       <View style={styles.bottomBarContainer}>
@@ -1261,4 +1289,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
   },
+  profileContainer: { flex: 1, backgroundColor: '#FAFAF8', padding: 20 },
+  profileHeader: { alignItems: 'center', marginBottom: 30, paddingTop: 40 },
+  profileAvatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#F3E8E9', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  profileName: { fontSize: 22, fontWeight: 'bold', color: '#111827' },
+  profileRole: { fontSize: 14, color: '#6B7280', marginTop: 4 },
+  profileCard: { backgroundColor: '#FFF', padding: 20, borderRadius: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: '#F3F4F6' },
+  profileSectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#8C1B2F', marginBottom: 16 },
+  profileRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+  profileLabel: { fontSize: 14, color: '#6B7280', fontWeight: '600' },
+  profileValue: { fontSize: 14, color: '#111827', fontWeight: '500' },
+  logoutButton: { flexDirection: 'row', backgroundColor: '#8C1B2F', padding: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 20, marginBottom: 100 },
+  logoutButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold', marginLeft: 8 }
 });
