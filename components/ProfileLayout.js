@@ -15,10 +15,7 @@ const { width } = Dimensions.get('window');
 export default function ProfileLayout({ name, role, onLogout, children }) {
   return (
     <View style={styles.container}>
-      {/* Dynamic Header Background */}
-      <View style={styles.headerBackground}>
-        <View style={styles.headerCurve} />
-      </View>
+      {/* Single Color Background is handled by container style */}
 
       <ScrollView 
         showsVerticalScrollIndicator={false} 
@@ -34,7 +31,7 @@ export default function ProfileLayout({ name, role, onLogout, children }) {
           </View>
           <Text style={styles.nameText}>{name || 'Unknown User'}</Text>
           <View style={styles.roleBadge}>
-            <Ionicons name="shield-checkmark" size={14} color="#8C1B2F" style={{marginRight: 6}}/>
+            <Ionicons name="shield-checkmark" size={14} color="#FFFFFF" style={{marginRight: 6}}/>
             <Text style={styles.roleText}>{role || 'User'}</Text>
           </View>
         </View>
@@ -45,7 +42,7 @@ export default function ProfileLayout({ name, role, onLogout, children }) {
 
           {/* Unified Logout Button */}
           <TouchableOpacity style={styles.logoutButton} onPress={onLogout} activeOpacity={0.8}>
-            <Ionicons name="log-out-outline" size={22} color="#FFFFFF" />
+            <Ionicons name="log-out-outline" size={22} color="#8C1B2F" />
             <Text style={styles.logoutButtonText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
@@ -60,26 +57,7 @@ export default function ProfileLayout({ name, role, onLogout, children }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  headerBackground: {
-    position: 'absolute',
-    top: 0,
-    width: width,
-    height: 240,
     backgroundColor: '#8C1B2F',
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
-    overflow: 'hidden',
-  },
-  headerCurve: {
-    position: 'absolute',
-    bottom: -60,
-    right: -60,
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   scrollContent: {
     paddingTop: 100,
@@ -123,20 +101,22 @@ const styles = StyleSheet.create({
   nameText: {
     fontSize: 26,
     fontWeight: '900',
-    color: '#111827',
+    color: '#FFFFFF',
     marginBottom: 8,
     letterSpacing: 0.5,
   },
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEE2E2',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   roleText: {
-    color: '#8C1B2F',
+    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -145,7 +125,7 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     flexDirection: 'row',
-    backgroundColor: '#111827',
+    backgroundColor: '#FFFFFF',
     paddingVertical: 18,
     borderRadius: 16,
     alignItems: 'center',
@@ -158,7 +138,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   logoutButtonText: {
-    color: '#FFFFFF',
+    color: '#8C1B2F',
     fontSize: 17,
     fontWeight: 'bold',
     marginLeft: 10,
