@@ -209,10 +209,11 @@ export default function StudentReport({ navigation }) {
             let result = await ImagePicker.launchCameraAsync({
               allowsEditing: true,
               aspect: [4, 3],
-              quality: 1,
+              quality: 0.3,
+              base64: true,
             });
-            if (!result.canceled) {
-              setImageUri(result.assets[0].uri);
+            if (!result.canceled && result.assets[0].base64) {
+              setImageUri(`data:image/jpeg;base64,${result.assets[0].base64}`);
             }
           }
         },
@@ -223,10 +224,11 @@ export default function StudentReport({ navigation }) {
               mediaTypes: ImagePicker.MediaTypeOptions.Images,
               allowsEditing: true,
               aspect: [4, 3],
-              quality: 1,
+              quality: 0.3,
+              base64: true,
             });
-            if (!result.canceled) {
-              setImageUri(result.assets[0].uri);
+            if (!result.canceled && result.assets[0].base64) {
+              setImageUri(`data:image/jpeg;base64,${result.assets[0].base64}`);
             }
           }
         },
