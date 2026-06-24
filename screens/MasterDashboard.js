@@ -135,11 +135,11 @@ export default function MasterDashboard() {
         {/* Student Connected Metrics */}
         <View style={[styles.card, { backgroundColor: '#3B82F6' }]}>
           <Text style={styles.number}>{db.complaints ? db.complaints.length : 0}</Text>
-          <Text style={styles.label}>Student Reports</Text>
+          <Text style={styles.label}>Student Concerns</Text>
         </View>
         <View style={[styles.card, { backgroundColor: '#F59E0B' }]}>
           <Text style={styles.number}>{db.complaints ? db.complaints.filter(c => c.status !== 'Resolved' && c.status !== 'Closed').length : 0}</Text>
-          <Text style={styles.label}>Pending Issues</Text>
+          <Text style={styles.label}>Pending Concerns</Text>
         </View>
       </View>
 

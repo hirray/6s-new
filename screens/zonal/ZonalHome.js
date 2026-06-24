@@ -11,22 +11,15 @@ export default function ZonalHome({ onSelectSubZone }) {
   // Get unique sub-zones for this zone
   const subZonesInZone = SUB_ZONAL_HEADS.filter(h => h.zone === myZoneName);
   
-  // Create a unique list of subzones
-  const uniqueSubZonesMap = {};
+  // Create a unique list of areas (floor wise data)
+  const uniqueAreasMap = {};
   subZonesInZone.forEach(h => {
-    if(!uniqueSubZonesMap[h.subZone]) {
-      uniqueSubZonesMap[h.subZone] = [];
-    }
-    // Avoid duplicate areas in string
-    if(!uniqueSubZonesMap[h.subZone]?.includes(h.areasCovered)) {
-      uniqueSubZonesMap[h.subZone].push(h.areasCovered);
+    if(!uniqueAreasMap[h.areasCovered]) {
+      uniqueAreasMap[h.areasCovered] = h;
     }
   });
 
-  const uniqueSubZones = Object.keys(uniqueSubZonesMap).map(szNum => ({
-    subZone: szNum,
-    areas: uniqueSubZonesMap[szNum].join(', ')
-  }));
+  const uniqueAreas = Object.values(uniqueAreasMap);
 
   // For demo, assign mock status (red, yellow, green)
   const getMockStatus = (index) => {
@@ -42,24 +35,24 @@ export default function ZonalHome({ onSelectSubZone }) {
         <Text style={styles.subtitle}>Sub-Zone Progress Summary</Text>
       </View>
 
-      {uniqueSubZones.length === 0 ? (
-        <Text style={styles.emptyText}>No sub-zones found for this zone.</Text>
+      {uniqueAreas.length === 0 ? (
+        <Text style={styles.emptyText}>No floor areas found for this zone.</Text>
       ) : (
-        uniqueSubZones.map((sz, index) => {
+        uniqueAreas.map((areaData, index) => {
           const status = getMockStatus(index);
           return (
             <TouchableOpacity 
-              key={sz.subZone} 
+              key={areaData.id} 
               style={[styles.card, { borderLeftColor: status.color, borderLeftWidth: 5 }]}
-              onPress={() => onSelectSubZone(sz)}
+              onPress={() => onSelectSubZone({ floor: areaData.areasCovered, name: areaData.name, id: areaData.id })}
             >
               <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>Sub-Zone {sz.subZone}</Text>
+                <Text style={styles.cardTitle}>{areaData.areasCovered}</Text>
                 <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
                   <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
                 </View>
               </View>
-              <Text style={styles.areasText} numberOfLines={2}>{sz.areas}</Text>
+              <Text style={styles.areasText} numberOfLines={2}>Coordinator: {areaData.name}</Text>
               <View style={styles.timeRow}>
                 <Ionicons name="time-outline" size={14} color="#6B7280" />
                 <Text style={styles.timeText}>Last updated: Today, 10:{30 + index} AM</Text>

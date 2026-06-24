@@ -130,7 +130,7 @@ const MOCK_REPORTS = [
     description: 'Projector in Robotics Lab of Anviksha Building is not functioning properly.',
     image: 'https://images.unsplash.com/photo-1544413660-299165566b1d?q=80&w=600&auto=format&fit=crop', // Placeholder projector image
     timeline: [
-      { title: 'Report Submitted', time: '17 June 2026 , 10:30 AM', state: 'completed' },
+      { title: 'Concern Submitted', time: '17 June 2026 , 10:30 AM', state: 'completed' },
       { title: 'Assigned to Maintenance', time: '17 June 2026 , 11:30 AM', state: 'completed' },
       { title: 'Work In Progress', time: '18 June 2026 , 9:30 AM', state: 'current' },
       { title: 'Resolved', time: 'Pending', state: 'pending' }
@@ -148,7 +148,7 @@ const MOCK_REPORTS = [
     description: 'Continuous water leakage from the third sink tap. It has formed a puddle on the floor.',
     image: null,
     timeline: [
-      { title: 'Report Submitted', time: '15 June 2026 , 09:30 AM', state: 'completed' },
+      { title: 'Concern Submitted', time: '15 June 2026 , 09:30 AM', state: 'completed' },
       { title: 'Assigned to Plumber', time: '15 June 2026 , 10:15 AM', state: 'completed' },
       { title: 'Work In Progress', time: '15 June 2026 , 01:00 PM', state: 'completed' },
       { title: 'Resolved', time: '15 June 2026 , 03:00 PM', state: 'completed' }
@@ -166,7 +166,7 @@ const MOCK_REPORTS = [
     description: 'Two chairs in the back row are broken and need replacement.',
     image: null,
     timeline: [
-      { title: 'Report Submitted', time: '10 June 2026 , 02:45 PM', state: 'completed' },
+      { title: 'Concern Submitted', time: '10 June 2026 , 02:45 PM', state: 'completed' },
       { title: 'Assigned to Maintenance', time: '11 June 2026 , 10:00 AM', state: 'completed' },
       { title: 'Resolved', time: '12 June 2026 , 04:00 PM', state: 'completed' }
     ]
@@ -256,7 +256,7 @@ export default function StudentReport({ navigation }) {
     }
 
     submitComplaint(selectedZone.name, selectedCategory, `[${selectedSubZone.name}] ` + issueText, imageUri);
-    Alert.alert('Report Submitted', `Your concern has been submitted successfully.`);
+    Alert.alert('Concern Submitted', `Your concern has been submitted successfully.`);
     setIssueText('');
     setImageUri(null);
     setSelectedZone(null);
@@ -347,7 +347,7 @@ export default function StudentReport({ navigation }) {
           <TouchableOpacity style={styles.headerIcon} onPress={() => setSelectedReport(null)}>
             <Ionicons name="arrow-back" size={28} color="#8C1B2F" />
           </TouchableOpacity>
-          <Text style={styles.reportsHeaderTitle}>My Reports</Text>
+          <Text style={styles.reportsHeaderTitle}>My Concerns</Text>
           <TouchableOpacity style={styles.headerIcon}>
             <Ionicons name="ellipsis-horizontal" size={28} color="#8C1B2F" />
           </TouchableOpacity>
@@ -380,7 +380,7 @@ export default function StudentReport({ navigation }) {
                 <Text style={styles.detailsGridValue}>{selectedReport.date}</Text>
               </View>
               <View style={styles.detailsGridItem}>
-                <Text style={styles.detailsGridLabel}>Report ID</Text>
+                <Text style={styles.detailsGridLabel}>Concern ID</Text>
                 <Text style={styles.detailsGridValueId}>{selectedReport.id}</Text>
               </View>
               <View style={styles.detailsGridItem}>
@@ -427,7 +427,7 @@ export default function StudentReport({ navigation }) {
         <TouchableOpacity style={styles.headerIcon}>
           <Ionicons name="menu" size={28} color="#8C1B2F" />
         </TouchableOpacity>
-        <Text style={styles.reportsHeaderTitle}>My Reports</Text>
+        <Text style={styles.reportsHeaderTitle}>My Concerns</Text>
         <TouchableOpacity style={styles.headerIcon} onPress={logout}>
           <Ionicons name="log-out-outline" size={26} color="#8C1B2F" />
         </TouchableOpacity>
@@ -438,7 +438,7 @@ export default function StudentReport({ navigation }) {
           <Ionicons name="search" size={20} color="#9CA3AF" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search reports..."
+            placeholder="Search concerns..."
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor="#9CA3AF"
@@ -462,7 +462,7 @@ export default function StudentReport({ navigation }) {
           description: c.desc,
           image: c.imageUri || null,
           timeline: [
-            { title: 'Report Submitted', time: c.date, state: 'completed' },
+            { title: 'Concern Submitted', time: c.date, state: 'completed' },
             ...(c.status === 'Resolved' ? [{ title: 'Resolved', time: (c.remarks && c.remarks.length > 0) ? c.remarks[c.remarks.length - 1].date : c.date, state: 'completed' }] : [{ title: 'Under Review', time: 'Pending', state: 'current' }])
           ]
         })).filter(r => r.title.toLowerCase().includes(searchQuery.toLowerCase())).map((report) => {
@@ -489,7 +489,7 @@ export default function StudentReport({ navigation }) {
                 </View>
                 <View style={styles.reportMetaRight}>
                   <View>
-                    <Text style={styles.reportMetaLabel}>Report ID</Text>
+                    <Text style={styles.reportMetaLabel}>Concern ID</Text>
                     <Text style={styles.reportMetaValueId}>{report.id}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#000" style={{ marginLeft: 16 }} />
@@ -546,7 +546,7 @@ export default function StudentReport({ navigation }) {
       {/* Title and Illustration */}
       <View style={styles.titleSection}>
         <View style={styles.titleTextContainer}>
-          <Text style={styles.mainTitle}>Campus Issues</Text>
+          <Text style={styles.mainTitle}>Campus Concerns</Text>
           <Text style={styles.subTitle}>Report and track campus concerns</Text>
         </View>
         <View style={styles.illustrationContainer}>
@@ -704,7 +704,7 @@ export default function StudentReport({ navigation }) {
       <FloatingNavBar
         tabs={[
           { key: 'home', icon: 'home-outline', activeIcon: 'home', label: 'Home' },
-          { key: 'reports', icon: 'document-text-outline', activeIcon: 'document-text', label: 'Reports' },
+          { key: 'reports', icon: 'document-text-outline', activeIcon: 'document-text', label: 'Concerns' },
           { key: 'profile', icon: 'person-outline', activeIcon: 'person', label: 'Profile' }
         ]}
         activeTab={activeTab}

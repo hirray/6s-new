@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, TouchableOpacity, Text, Dimensions } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Text, Dimensions, SafeAreaView, Platform, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import SubZonalHomeStack from './subzonal/SubZonalHomeStack';
@@ -22,26 +22,33 @@ export default function SubZonalMain() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        {renderContent()}
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.content}>
+          {renderContent()}
+        </View>
+        
+        <FloatingNavBar 
+          tabs={[
+            { key: 'Home', icon: 'home-outline', activeIcon: 'home', label: 'Home' },
+            { key: 'Concerns', icon: 'alert-circle-outline', activeIcon: 'alert-circle', label: 'Concerns' },
+            { key: 'History', icon: 'calendar-outline', activeIcon: 'calendar', label: 'History' },
+            { key: 'Profile', icon: 'person-outline', activeIcon: 'person', label: 'Profile' }
+          ]}
+          activeTab={activeTab}
+          onTabPress={setActiveTab}
+        />
       </View>
-      
-      <FloatingNavBar 
-        tabs={[
-          { key: 'Home', icon: 'home-outline', activeIcon: 'home', label: 'Home' },
-          { key: 'Concerns', icon: 'alert-circle-outline', activeIcon: 'alert-circle', label: 'Concerns' },
-          { key: 'History', icon: 'calendar-outline', activeIcon: 'calendar', label: 'History' },
-          { key: 'Profile', icon: 'person-outline', activeIcon: 'person', label: 'Profile' }
-        ]}
-        activeTab={activeTab}
-        onTabPress={setActiveTab}
-      />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FAFAF8',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
   container: {
     flex: 1,
     backgroundColor: '#FAFAF8',

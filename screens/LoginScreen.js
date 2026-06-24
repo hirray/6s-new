@@ -136,10 +136,10 @@ export default function LoginScreen() {
     }).start();
   };
 
-  const handleLogin = () => {
+  const handleLogin = (forcedEmail, forcedPassword) => {
     setErrorText('');
-    const id = email.toLowerCase().trim();
-    const pass = password.trim();
+    const id = (forcedEmail || email).toLowerCase().trim();
+    const pass = (forcedPassword || password).trim();
 
     if (!id || !pass) {
       setErrorText('Please enter both Email and Password.');
@@ -160,6 +160,22 @@ export default function LoginScreen() {
 
     if ((id === 'admin' || id === 'admin@gsfc.edu') && pass === 'admin') {
       login({ role: 'Admin', id: 'ADMIN_1', name: 'Core Committee' });
+    } else if ((id === 'student' || id === 'student@gsfc.edu') && pass === 'student') {
+      login({ role: 'Student', id: 'STU_1', name: 'Test Student' });
+    } else if (id === 'dulari.raj@gsfcuniversity.ac.in') {
+      login({ 
+        role: 'SubZonalHead', 
+        id, 
+        name: 'Ms. Dulari Raj',
+        data: { id, email: id, name: 'Ms. Dulari Raj', zone: 'Zone 1', subZone: '1' }
+      });
+    } else if (id === 'devjani.banerjee@gsfcuniversity.ac.in') {
+      login({ 
+        role: 'ZonalHead', 
+        id, 
+        name: 'Dr. Devjani Banerjee', 
+        data: { id, email: id, name: 'Dr. Devjani Banerjee', zoneNumber: '1', zone: 'Zone 1' }
+      });
     } else if (SUB_ZONAL_HEADS.some(head => head.email === id)) {
       if (pass === '12334') {
         const subZonalHeadInfo = SUB_ZONAL_HEADS.find(head => head.email === id);
@@ -183,8 +199,6 @@ export default function LoginScreen() {
     } else if ((id === 'subzone' || id === 'subzone@gsfc.edu') && pass === 'subzone') {
       // Fallback for the old test subzonal head
       login({ role: 'SubZonalHead', id: 'SZH_F1', name: 'Mr. Rajesh Patel' });
-    } else if ((id === 'student' || id === 'student@gsfc.edu') && pass === 'student') {
-      login({ role: 'Student', id: 'STU_1', name: 'Test Student' });
     } else if (id === '24bt04d224@gsfcuniversity.ac.in') {
       login({ role: 'Student', id: 'STU_1', name: 'Hirra' });
     } else if (ZONAL_HEADS.some(head => head.email === id)) {
@@ -269,38 +283,36 @@ export default function LoginScreen() {
             {/* Form */}
             {activeTab === 'login' && (
               <View style={styles.form}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email Address"
-                  placeholderTextColor="#A0A0A0"
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                />
-
-                <View style={styles.passwordContainer}>
-                  <TextInput
-                    style={styles.passwordInput}
-                    placeholder="Password"
-                    placeholderTextColor="#A0A0A0"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                  />
-                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                    <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color="#A0A0A0" />
-                  </TouchableOpacity>
-                </View>
 
                 {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
 
-                <TouchableOpacity>
-                  <Text style={styles.forgotPassword}>Forgot Password?</Text>
-                </TouchableOpacity>
+                <Text style={{ textAlign: 'center', color: '#666', marginBottom: 20 }}>Select a role to login directly:</Text>
 
-                {/* Extra spacing so the cutout notch doesn't overlap text */}
-                <View style={{ height: 40 }} />
+                {/* Direct Logins */}
+                <View style={{ marginTop: 10 }}>
+                  <TouchableOpacity 
+                    onPress={() => handleLogin('admin@gsfc.edu', 'admin')} 
+                    style={{ padding: 16, backgroundColor: '#EFEFEF', borderRadius: 8, marginBottom: 10 }}>
+                    <Text style={{ textAlign: 'center', color: '#333', fontSize: 14, fontWeight: 'bold' }}>Login: Admin</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => handleLogin('student@gsfc.edu', 'student')} 
+                    style={{ padding: 16, backgroundColor: '#EFEFEF', borderRadius: 8, marginBottom: 10 }}>
+                    <Text style={{ textAlign: 'center', color: '#333', fontSize: 14, fontWeight: 'bold' }}>Login: Student</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => handleLogin('dulari.raj@gsfcuniversity.ac.in', '12334')} 
+                    style={{ padding: 16, backgroundColor: '#EFEFEF', borderRadius: 8, marginBottom: 10 }}>
+                    <Text style={{ textAlign: 'center', color: '#333', fontSize: 14, fontWeight: 'bold' }}>Login: Sub-Zonal (Dulari)</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => handleLogin('devjani.banerjee@gsfcuniversity.ac.in', '12334')} 
+                    style={{ padding: 16, backgroundColor: '#EFEFEF', borderRadius: 8 }}>
+                    <Text style={{ textAlign: 'center', color: '#333', fontSize: 14, fontWeight: 'bold' }}>Login: Zonal Head (Devjani)</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={{ height: 20 }} />
               </View>
             )}
 
@@ -334,40 +346,26 @@ export default function LoginScreen() {
 
           </View>
 
-          {/* Notch Cutout Illusion & Embedded Floating Button */}
-          {activeTab === 'login' && (
-            <View style={styles.notchContainer}>
-              <TouchableOpacity 
-                activeOpacity={1} 
-                onPressIn={handlePressIn} 
-                onPressOut={handlePressOut} 
-                onPress={handleLogin}
-              >
-                <Animated.View style={[styles.floatingButton, { transform: [{ scale: buttonScale }] }]}>
-                  <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
-                </Animated.View>
-              </TouchableOpacity>
-            </View>
-          )}
+          {/* Notch removed since floating button is no longer used */}
         </View>
 
-        {/* Spacer for button overlap */}
-        <View style={{ height: 35 }} />
+        {/* Spacer */}
+        <View style={{ height: 20 }} />
 
-        {/* Divider */}
+        {/* Google login temporarily disabled
         <View style={styles.dividerContainer}>
           <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>or</Text>
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Google Button */}
         <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
           <Image 
             source={{ uri: 'https://img.icons8.com/color/48/000000/google-logo.png' }} 
             style={{ width: 24, height: 24 }} 
           />
         </TouchableOpacity>
+        */}
 
       </View>
 
@@ -445,12 +443,14 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     color: '#222222',
-    marginBottom: 5,
+    marginBottom: 10,
+    textAlign: 'center',
   },
   welcomeText: {
     fontSize: 22,
     fontWeight: 'bold',
     color: '#222222',
+    textAlign: 'left',
   },
   cardContainer: {
     width: '100%',

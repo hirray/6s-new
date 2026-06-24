@@ -4,8 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
 import { getChecklistForUser } from '../../utils/checklistMapper';
 
-export default function SubZonalChecklist({ category, onBack }) {
-  const { currentUser, staticData, submitChecklist } = useContext(DataContext);
+export default function SubZonalChecklist({ category, onBack, onSaveProgress }) {
+  const { currentUser, staticData } = useContext(DataContext);
   const checklistData = getChecklistForUser(currentUser?.data, staticData?.checklists || []);
   const categoryKey = category.replace(/\s+/g, ''); // E.g., 'Set In Order' -> 'SetInOrder'
   const items = checklistData[categoryKey] || [];
@@ -37,12 +37,16 @@ export default function SubZonalChecklist({ category, onBack }) {
 
   const handleSave = () => {
     const totalItems = items.length;
+    let score = 0;
     if (totalItems > 0) {
       const checkedCount = Object.values(checklistState).filter(s => s.checked).length;
-      const score = Math.round((checkedCount / totalItems) * 100);
-      submitChecklist(currentUser?.id, currentUser?.data?.zone, score);
+      score = Math.round((checkedCount / totalItems) * 100);
     }
-    onBack();
+    if (onSaveProgress) {
+      onSaveProgress(category, score);
+    } else {
+      onBack();
+    }
   };
 
   return (
@@ -88,9 +92,14 @@ export default function SubZonalChecklist({ category, onBack }) {
         )}
 
         {items.length > 0 && (
-          <TouchableOpacity style={styles.submitBtn} onPress={handleSave}>
-            <Text style={styles.submitBtnText}>Save Progress</Text>
-          </TouchableOpacity>
+          <View style={styles.actionRow}>
+            <TouchableOpacity style={styles.nonSaveBtn} onPress={onBack}>
+              <Text style={styles.nonSaveBtnText}>Don't Save</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.submitBtn} onPress={handleSave}>
+              <Text style={styles.submitBtnText}>Save Progress</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </ScrollView>
     </View>
@@ -110,6 +119,9 @@ const styles = StyleSheet.create({
   itemText: { flex: 1, fontSize: 15, color: '#111827', lineHeight: 22 },
   itemTextUnchecked: { color: '#991B1B' },
   remarksInput: { marginTop: 12, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#FCA5A5', borderRadius: 8, padding: 10, fontSize: 14, minHeight: 60, textAlignVertical: 'top' },
-  submitBtn: { backgroundColor: '#8C1B2F', padding: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 20 },
+  actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
+  nonSaveBtn: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#9CA3AF', padding: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
+  nonSaveBtnText: { color: '#4B5563', fontSize: 16, fontWeight: 'bold' },
+  submitBtn: { flex: 1, backgroundColor: '#8C1B2F', padding: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
   submitBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' }
 });

@@ -3,13 +3,12 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ImageBackground }
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
 
-export default function SubZonalHome({ onSelectCategory }) {
+export default function SubZonalHome({ onSelectCategory, checklistProgress = {}, onFinalSubmit }) {
   const { currentUser } = useContext(DataContext);
   
-  // Hardcoded for UI demo
-  const progressPercentage = 50;
-  const completedTasks = 3;
+  const completedTasks = Object.keys(checklistProgress).length;
   const totalTasks = 6;
+  const progressPercentage = Math.round((completedTasks / totalTasks) * 100);
 
   const userFirstName = currentUser?.name?.split(' ')[1] || currentUser?.name || 'Head';
   
@@ -70,8 +69,8 @@ export default function SubZonalHome({ onSelectCategory }) {
       <View style={styles.gridContainer}>
         {/* Sort */}
         <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Sort')}>
-          <View style={[styles.iconContainer, { backgroundColor: '#1C75FF' }]}>
-             <Ionicons name="layers" size={28} color="#FFFFFF" />
+          <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Sort'] !== undefined ? '#1A8C4E' : '#1C75FF' }]}>
+             <Ionicons name={checklistProgress['Sort'] !== undefined ? "checkmark-circle" : "layers"} size={28} color="#FFFFFF" />
           </View>
           <Text style={styles.gridItemTitle}>Sort</Text>
           <Text style={styles.gridItemSubtitle}>Seiri</Text>
@@ -80,8 +79,8 @@ export default function SubZonalHome({ onSelectCategory }) {
 
         {/* Set In Order */}
         <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Set In Order')}>
-          <View style={[styles.iconContainer, { backgroundColor: '#A21CFF' }]}>
-             <Ionicons name="grid" size={28} color="#FFFFFF" />
+          <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Set In Order'] !== undefined ? '#1A8C4E' : '#A21CFF' }]}>
+             <Ionicons name={checklistProgress['Set In Order'] !== undefined ? "checkmark-circle" : "grid"} size={28} color="#FFFFFF" />
           </View>
           <Text style={styles.gridItemTitle}>Set In Order</Text>
           <Text style={styles.gridItemSubtitle}>Seiton</Text>
@@ -90,8 +89,8 @@ export default function SubZonalHome({ onSelectCategory }) {
 
         {/* Shine */}
         <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Shine')}>
-          <View style={[styles.iconContainer, { backgroundColor: '#00C3FF' }]}>
-             <Ionicons name="sparkles" size={28} color="#FFFFFF" />
+          <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Shine'] !== undefined ? '#1A8C4E' : '#00C3FF' }]}>
+             <Ionicons name={checklistProgress['Shine'] !== undefined ? "checkmark-circle" : "sparkles"} size={28} color="#FFFFFF" />
           </View>
           <Text style={styles.gridItemTitle}>Shine</Text>
           <Text style={styles.gridItemSubtitle}>Seiso</Text>
@@ -100,8 +99,8 @@ export default function SubZonalHome({ onSelectCategory }) {
 
         {/* Standardize */}
         <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Standardize')}>
-          <View style={[styles.iconContainer, { backgroundColor: '#FF1C75' }]}>
-             <Ionicons name="document-text" size={28} color="#FFFFFF" />
+          <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Standardize'] !== undefined ? '#1A8C4E' : '#FF1C75' }]}>
+             <Ionicons name={checklistProgress['Standardize'] !== undefined ? "checkmark-circle" : "document-text"} size={28} color="#FFFFFF" />
           </View>
           <Text style={styles.gridItemTitle}>Standardize</Text>
           <Text style={styles.gridItemSubtitle}>Seiketsu</Text>
@@ -110,8 +109,8 @@ export default function SubZonalHome({ onSelectCategory }) {
 
         {/* Sustain */}
         <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Sustain')}>
-          <View style={[styles.iconContainer, { backgroundColor: '#00B94A' }]}>
-             <Ionicons name="bar-chart" size={28} color="#FFFFFF" />
+          <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Sustain'] !== undefined ? '#1A8C4E' : '#00B94A' }]}>
+             <Ionicons name={checklistProgress['Sustain'] !== undefined ? "checkmark-circle" : "bar-chart"} size={28} color="#FFFFFF" />
           </View>
           <Text style={styles.gridItemTitle}>Sustain</Text>
           <Text style={styles.gridItemSubtitle}>Shitsuke</Text>
@@ -120,14 +119,21 @@ export default function SubZonalHome({ onSelectCategory }) {
 
         {/* Safety */}
         <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Safety')}>
-          <View style={[styles.iconContainer, { backgroundColor: '#FF8800' }]}>
-             <Ionicons name="shield-checkmark" size={28} color="#FFFFFF" />
+          <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Safety'] !== undefined ? '#1A8C4E' : '#FF8800' }]}>
+             <Ionicons name={checklistProgress['Safety'] !== undefined ? "checkmark-circle" : "shield-checkmark"} size={28} color="#FFFFFF" />
           </View>
           <Text style={styles.gridItemTitle}>Safety</Text>
           <Text style={styles.gridItemSubtitle}>Safety</Text>
           <Text style={styles.gridItemDesc}>Ensure workspace safety</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Submit Button */}
+      {completedTasks > 0 && (
+        <TouchableOpacity style={styles.finalSubmitButton} onPress={onFinalSubmit}>
+          <Text style={styles.finalSubmitButtonText}>Submit Audit ({completedTasks}/6)</Text>
+        </TouchableOpacity>
+      )}
 
     </ScrollView>
   );
@@ -324,5 +330,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9CA3AF',
     lineHeight: 16,
+  },
+  finalSubmitButton: {
+    backgroundColor: '#8C1B2F',
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    marginBottom: 20,
+    shadowColor: '#8C1B2F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  finalSubmitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   }
 });

@@ -17,7 +17,7 @@ export default function ZonalSubZoneDetail({ subZone, onBack }) {
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.title}>Sub-Zone {subZone.floor}</Text>
+          <Text style={styles.title}>{subZone.floor}</Text>
           <Text style={styles.subtitle}>In-Depth Report ({subZone.name})</Text>
         </View>
       </View>

@@ -1,5 +1,5 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, ImageBackground, TouchableOpacity, Modal, TouchableWithoutFeedback, ScrollView, Animated, Easing, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, ImageBackground, TouchableOpacity, Modal, TouchableWithoutFeedback, ScrollView, Animated, Easing, Dimensions, SafeAreaView, TextInput, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { ReactNativeZoomableView } from '@openspacelabs/react-native-zoomable-view';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
@@ -57,6 +57,155 @@ const AnimatedMarker = ({ marker, onPress }) => {
     </TouchableOpacity>
   );
 };
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const ZoneDetailModal = ({ selectedZone, close, db, staticData }) => {
+  const [expandedSubZone, setExpandedSubZone] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Get SubZonal Heads for this zone
+  const zoneId = parseInt(selectedZone.id);
+  let subZonalHeads = staticData?.subZonalHeads?.filter(sz => sz.zone === zoneId) || [];
+  
+  if (searchQuery) {
+    subZonalHeads = subZonalHeads.filter(sz => 
+      sz.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (sz.floor && sz.floor.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  }
+
+  const toggleSubZone = (id) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedSubZone(expandedSubZone === id ? null : id);
+  };
+
+  const getSubZoneMetrics = (sz) => {
+    // Latest submission
+    const submissions = db.checklistSubmissions
+      .filter(s => s.subZonalHeadId === sz.id)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+    const latestSub = submissions.length > 0 ? submissions[0] : null;
+    const compliance = latestSub ? latestSub.score : 0;
+
+    // Complaints for this specific sub-zone
+    const subZoneComplaints = db.complaints.filter(c => c.subZone === sz.floor || c.subZone === sz.subZone || (c.subZone && c.subZone.includes(sz.floor)));
+    const pendings = subZoneComplaints.filter(c => c.status === 'Pending').length;
+    const resolved = subZoneComplaints.filter(c => c.status === 'Resolved' || c.status === 'Done').length;
+
+    return { compliance, pendings, resolved, latestSub };
+  };
+
+  const renderChecklistBreakdown = (latestSub) => {
+    if (!latestSub || !latestSub.scores) {
+      return (
+        <View style={styles.breakdownEmpty}>
+          <Text style={styles.breakdownEmptyText}>No checklist data available for this sub-zone yet.</Text>
+        </View>
+      );
+    }
+    
+    // Convert scores object to array if needed, assuming scores is an object mapping category to score
+    const categories = ['1S', '2S', '3S', '4S', '5S', '6S'];
+    return (
+      <View style={styles.breakdownContainer}>
+        {categories.map((cat, idx) => {
+          const score = latestSub.scores[cat] || latestSub.scores[cat.toLowerCase()] || latestSub[cat.toLowerCase()] || Math.round(latestSub.score);
+          const color = score >= 85 ? '#1A8C4E' : score >= 60 ? '#B07D10' : '#C0182A';
+          return (
+            <View key={idx} style={styles.breakdownRow}>
+              <Text style={styles.breakdownCat}>{cat} Compliance</Text>
+              <Text style={[styles.breakdownScore, { color }]}>{score}%</Text>
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
+
+  return (
+    <Modal visible transparent animationType="slide">
+      <View style={styles.detailModalContainer}>
+        <SafeAreaView style={styles.detailModalSafeArea}>
+          <View style={styles.detailModalHeader}>
+            <TouchableOpacity onPress={close} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#6E2A36" />
+            </TouchableOpacity>
+            <Text style={styles.detailModalTitle}>Zone Details</Text>
+            <TouchableOpacity>
+              <Ionicons name="filter" size={24} color="#6E2A36" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+            <TextInput 
+              style={styles.searchInput}
+              placeholder="Search sub-zones..."
+              placeholderTextColor="#9CA3AF"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+
+          <ScrollView style={styles.detailScroll} showsVerticalScrollIndicator={false}>
+            <View style={styles.accordionCard}>
+              <View style={styles.accordionHeader}>
+                <View style={[styles.accordionIcon, { backgroundColor: getMarkerColor(selectedZone.status) }]}>
+                  <Ionicons name="business" size={20} color="#FFF" />
+                </View>
+                <Text style={styles.accordionTitle}>{selectedZone.name}</Text>
+                <Ionicons name="chevron-up" size={20} color="#111827" />
+              </View>
+
+              <View style={styles.tableHeaderRow}>
+                <Text style={[styles.tableHeaderCol, {flex: 2}]}></Text>
+                <Text style={[styles.tableHeaderCol, {flex: 1, textAlign: 'center'}]}>Compliance</Text>
+                <Text style={[styles.tableHeaderCol, {flex: 1, textAlign: 'center'}]}>Pendings</Text>
+                <Text style={[styles.tableHeaderCol, {flex: 1, textAlign: 'center'}]}>Resolved</Text>
+                <View style={{width: 24}} />
+              </View>
+
+              {subZonalHeads.map((sz, index) => {
+                const metrics = getSubZoneMetrics(sz);
+                const isExpanded = expandedSubZone === sz.id;
+                const compColor = metrics.compliance >= 85 ? '#1A8C4E' : metrics.compliance >= 60 ? '#B07D10' : '#C0182A';
+
+                return (
+                  <View key={sz.id} style={styles.subZoneRowContainer}>
+                    <TouchableOpacity 
+                      style={styles.subZoneRow}
+                      onPress={() => toggleSubZone(sz.id)}
+                    >
+                      <Text style={[styles.subZoneName, {flex: 2}]} numberOfLines={2}>
+                        {sz.floor || sz.name}
+                      </Text>
+                      <Text style={[styles.subZoneMetric, {flex: 1, color: compColor}]}>{metrics.compliance}%</Text>
+                      <Text style={[styles.subZoneMetric, {flex: 1, color: '#D97706'}]}>{metrics.pendings}</Text>
+                      <Text style={[styles.subZoneMetric, {flex: 1, color: '#1A8C4E'}]}>{metrics.resolved}</Text>
+                      <Ionicons name={isExpanded ? "chevron-up" : "chevron-forward"} size={20} color="#6B7280" />
+                    </TouchableOpacity>
+                    
+                    {isExpanded && renderChecklistBreakdown(metrics.latestSub)}
+                  </View>
+                );
+              })}
+              
+              {subZonalHeads.length === 0 && (
+                <View style={{padding: 20, alignItems: 'center'}}>
+                  <Text style={{color: '#6B7280'}}>No Sub-Zones assigned to this zone.</Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    </Modal>
+  );
+};
+
 export default function AdminHome() {
   const { zones, db, staticData } = useContext(DataContext);
   const [selectedZone, setSelectedZone] = useState(null);
@@ -105,30 +254,77 @@ export default function AdminHome() {
   });
 
   const totalZones = liveZones.length;
-  const greenZones = liveZones.filter(z => z.status === 'Green').length;
-  const yellowZones = liveZones.filter(z => z.status === 'Yellow').length;
-  const redZones = liveZones.filter(z => z.status === 'Red').length;
+  const overallCompliance = liveZones.length > 0 ? Math.round(liveZones.reduce((sum, z) => sum + z.score, 0) / liveZones.length) : 0;
+  
+  const totalComplaints = db.complaints.length;
+  const pendingComplaints = db.complaints.filter(c => c.status === 'Pending').length;
+  const resolvedComplaints = db.complaints.filter(c => c.status === 'Resolved' || c.status === 'Done').length;
+  const activeAdvisories = db.advisories.length;
 
   return (
+    <SafeAreaView style={{flex: 1, backgroundColor: '#FAF9F6'}}>
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 30 }}>
-      <View style={styles.summaryContainer}>
-        <View style={styles.grid}>
-          <View style={[styles.card, styles.maroonCard]}>
-            <Text style={styles.number}>{totalZones}</Text>
-            <Text style={styles.label}>Total Zones</Text>
+      {/* Top Header */}
+      <View style={styles.header}>
+        <TouchableOpacity>
+          <Ionicons name="menu" size={32} color="#6E2A36" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.notificationBtn}>
+          <Ionicons name="notifications-outline" size={28} color="#6E2A36" />
+          <View style={styles.badge}><Text style={styles.badgeText}>3</Text></View>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.titleContainer}>
+        <Text style={styles.pageTitle}>Admin Dashboard</Text>
+        <Text style={styles.pageSubtitle}>University Compliance Overview</Text>
+      </View>
+
+      {/* Maroon Banner */}
+      <View style={styles.bannerCard}>
+        <View style={styles.circleProgress}>
+          <Text style={styles.circleText}>{overallCompliance}%</Text>
+        </View>
+        <View style={styles.bannerContent}>
+          <Text style={styles.bannerTitle}>Overall Compliance</Text>
+          <View style={styles.statusPill}>
+            <Text style={styles.statusPillText}>{overallCompliance >= 85 ? 'Excellent' : overallCompliance >= 60 ? 'Good' : 'Needs Work'}</Text>
           </View>
-          <View style={[styles.card, styles.greenCard]}>
-            <Text style={styles.number}>{greenZones}</Text>
-            <Text style={styles.label}>Green Zones</Text>
+          <View style={styles.trendRow}>
+            <Ionicons name="arrow-up" size={16} color="#1A8C4E" />
+            <Text style={styles.trendText}> 6% from last month</Text>
           </View>
-          <View style={[styles.card, styles.yellowCard]}>
-            <Text style={styles.number}>{yellowZones}</Text>
-            <Text style={styles.label}>Yellow Zones</Text>
+        </View>
+      </View>
+
+      {/* 4 White Summary Cards */}
+      <View style={styles.statsGrid}>
+        <View style={styles.statCard}>
+          <View style={[styles.statIconBox, { backgroundColor: '#FF8800' }]}>
+            <Ionicons name="alert" size={24} color="#FFF" />
           </View>
-          <View style={[styles.card, styles.redCard]}>
-            <Text style={styles.number}>{redZones}</Text>
-            <Text style={styles.label}>Red Zones</Text>
+          <Text style={[styles.statNumber, { color: '#D97706' }]}>{totalComplaints}</Text>
+          <Text style={styles.statLabel}>Total{'\n'}Complaints</Text>
+        </View>
+        <View style={styles.statCard}>
+          <View style={[styles.statIconBox, { backgroundColor: '#8C1B2F' }]}>
+            <Ionicons name="alert-circle" size={24} color="#FFF" />
           </View>
+          <Text style={[styles.statNumber, { color: '#8C1B2F' }]}>{pendingComplaints}</Text>
+          <Text style={styles.statLabel}>Pending{'\n'}Complaints</Text>
+        </View>
+        <View style={styles.statCard}>
+          <View style={[styles.statIconBox, { backgroundColor: '#1A8C4E' }]}>
+            <Ionicons name="checkmark-circle" size={24} color="#FFF" />
+          </View>
+          <Text style={[styles.statNumber, { color: '#1A8C4E' }]}>{resolvedComplaints}</Text>
+          <Text style={styles.statLabel}>Resolved{'\n'}this month</Text>
+        </View>
+        <View style={styles.statCard}>
+          <View style={[styles.statIconBox, { backgroundColor: '#6D28D9' }]}>
+            <Ionicons name="megaphone" size={24} color="#FFF" />
+          </View>
+          <Text style={[styles.statNumber, { color: '#6D28D9' }]}>{activeAdvisories}</Text>
+          <Text style={styles.statLabel}>Active{'\n'}Advisories</Text>
         </View>
       </View>
 
@@ -183,102 +379,43 @@ export default function AdminHome() {
       </View>
 
       {selectedZone && (
-        <Modal transparent visible animationType="fade">
-          <TouchableWithoutFeedback onPress={() => setSelectedZone(null)}>
-            <View style={styles.modalOverlay}>
-              <TouchableWithoutFeedback>
-                <View style={styles.popupCard}>
-                  <View style={styles.popupHeaderRow}>
-                    <View style={[styles.popupIconCircle, { backgroundColor: getMarkerColor(selectedZone.status) }]}>
-                      <Text style={styles.popupIconText}>{selectedZone.id}</Text>
-                    </View>
-                    <View style={styles.popupTitleBox}>
-                      <Text style={styles.popupTitle}>{selectedZone.name}</Text>
-                      <Text style={styles.popupManager}>{selectedZone.manager}</Text>
-                    </View>
-                    <TouchableOpacity onPress={() => setSelectedZone(null)}>
-                      <Ionicons name="close" size={24} color="#6B7280" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={styles.popupRow}>
-                    <Text style={styles.popupLabel}>Overall Status</Text>
-                    <Text style={[styles.popupValue, { color: getMarkerColor(selectedZone.status) }]}>
-                      {selectedZone.status}
-                    </Text>
-                  </View>
-                  
-                  <View style={styles.popupRow}>
-                    <Text style={styles.popupLabel}>Checklist</Text>
-                    <Text style={styles.popupValue}>{selectedZone.checklistRatio} tasks done</Text>
-                  </View>
-
-                  <View style={styles.popupRow}>
-                    <Text style={styles.popupLabel}>Last Submission</Text>
-                    <Text style={styles.popupValue}>{selectedZone.lastSub}</Text>
-                  </View>
-
-                  <View style={styles.popupRow}>
-                    <Text style={styles.popupLabel}>Open Concerns</Text>
-                    <Text style={styles.popupValue}>{selectedZone.openConcerns} concerns</Text>
-                  </View>
-
-                  <View style={styles.popupScoreBox}>
-                    <View style={styles.scoreRow}>
-                      <Text style={styles.popupLabel}>Compliance Score:</Text>
-                      <Text style={styles.scoreText}>{selectedZone.score}%</Text>
-                    </View>
-                    <View style={styles.scoreBarBg}>
-                      <View style={[styles.scoreBarFill, { width: `${selectedZone.score}%`, backgroundColor: getMarkerColor(selectedZone.status) }]} />
-                    </View>
-                  </View>
-
-                </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </Modal>
+        <ZoneDetailModal 
+          selectedZone={selectedZone} 
+          close={() => setSelectedZone(null)} 
+          db={db}
+          staticData={staticData}
+        />
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAF8' },
-  summaryContainer: { padding: 16, paddingTop: 20 },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  card: {
-    width: '48%',
-    padding: 20,
-    borderRadius: 14,
-    marginBottom: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#1C0A0E',
-    shadowOpacity: 0.12,
-    shadowOffset: {width: 0, height: 4},
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  maroonCard: { backgroundColor: '#8C1B2F' },
-  greenCard: { backgroundColor: '#1A8C4E' },
-  yellowCard: { backgroundColor: '#B07D10' },
-  redCard: { backgroundColor: '#C0182A' },
-  number: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  label: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-    fontWeight: '600',
-  },
+  container: { flex: 1, backgroundColor: '#FAF9F6' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 5 },
+  notificationBtn: { position: 'relative' },
+  badge: { position: 'absolute', right: -4, top: -4, backgroundColor: '#EF4444', width: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FAF9F6' },
+  badgeText: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
+  titleContainer: { paddingHorizontal: 20, marginBottom: 15 },
+  pageTitle: { fontSize: 28, fontWeight: '900', color: '#6E2A36', letterSpacing: -0.5 },
+  pageSubtitle: { fontSize: 15, color: '#6B7280', marginTop: 2 },
+  
+  bannerCard: { backgroundColor: '#6E2A36', marginHorizontal: 20, borderRadius: 24, padding: 20, flexDirection: 'row', alignItems: 'center' },
+  circleProgress: { width: 90, height: 90, borderRadius: 45, borderWidth: 8, borderColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', marginRight: 20 },
+  circleText: { color: '#FFFFFF', fontSize: 24, fontWeight: 'bold' },
+  bannerContent: { flex: 1, justifyContent: 'center' },
+  bannerTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', marginBottom: 8 },
+  statusPill: { backgroundColor: '#1A8C4E', alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginBottom: 10 },
+  statusPillText: { color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' },
+  trendRow: { flexDirection: 'row', alignItems: 'center' },
+  trendText: { color: '#FFFFFF', fontSize: 13, opacity: 0.9 },
+
+  statsGrid: { flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: 20, marginTop: 15 },
+  statCard: { width: '23%', backgroundColor: '#FFFFFF', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 8, alignItems: 'center', shadowColor: '#000', shadowOffset: {width:0, height:2}, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
+  statIconBox: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  statNumber: { fontSize: 22, fontWeight: 'bold', marginBottom: 4 },
+  statLabel: { fontSize: 10, color: '#6B7280', textAlign: 'center', fontWeight: '600' },
   mapCard: { backgroundColor: '#FFFFFF', margin: 16, borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3, borderWidth: 1, borderColor: '#E5E7EB' },
   mapCardHeader: { marginBottom: 16 },
   zoomControls: { flexDirection: 'row', alignItems: 'center', marginLeft: 16, marginTop: 4 },
@@ -298,20 +435,35 @@ const styles = StyleSheet.create({
   markerRing: { position: 'absolute', width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderStyle: 'dashed', borderColor: 'rgba(192, 24, 42, 0.8)', backgroundColor: 'rgba(192, 24, 42, 0.2)' },
   markerCircle: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.8, shadowRadius: 4, elevation: 5 },
   markerText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
-  popupCard: { width: '85%', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 10 },
-  popupHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  popupIconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  popupIconText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
-  popupTitleBox: { flex: 1 },
-  popupTitle: { fontSize: 18, fontWeight: 'bold', color: '#111827' },
-  popupManager: { fontSize: 12, color: '#6B7280' },
-  popupRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  popupLabel: { fontSize: 13, color: '#6B7280' },
-  popupValue: { fontSize: 13, fontWeight: '600', color: '#111827' },
-  popupScoreBox: { marginTop: 16 },
-  scoreRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  scoreText: { fontSize: 14, fontWeight: 'bold', color: '#111827' },
-  scoreBarBg: { height: 6, backgroundColor: '#E5E7EB', borderRadius: 3 },
-  scoreBarFill: { height: 6, borderRadius: 3 }
+  
+  // Detail Modal Styles
+  detailModalContainer: { flex: 1, backgroundColor: '#FAF9F6' },
+  detailModalSafeArea: { flex: 1 },
+  detailModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15 },
+  backButton: { padding: 5 },
+  detailModalTitle: { fontSize: 20, fontWeight: 'bold', color: '#6E2A36' },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', marginHorizontal: 20, borderRadius: 12, paddingHorizontal: 15, paddingVertical: 12, shadowColor: '#000', shadowOffset: {width:0, height:2}, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, marginBottom: 20 },
+  searchIcon: { marginRight: 10 },
+  searchInput: { flex: 1, fontSize: 16, color: '#333' },
+  detailScroll: { flex: 1, paddingHorizontal: 20 },
+  
+  accordionCard: { backgroundColor: '#FFFFFF', borderRadius: 16, paddingVertical: 20, shadowColor: '#000', shadowOffset: {width:0, height:4}, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3, marginBottom: 30 },
+  accordionHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 },
+  accordionIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
+  accordionTitle: { flex: 1, fontSize: 16, fontWeight: 'bold', color: '#111827' },
+  
+  tableHeaderRow: { flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  tableHeaderCol: { fontSize: 12, color: '#6B7280', fontWeight: '600' },
+  
+  subZoneRowContainer: { borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  subZoneRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 18 },
+  subZoneName: { fontSize: 14, fontWeight: '700', color: '#111827' },
+  subZoneMetric: { fontSize: 14, fontWeight: 'bold', textAlign: 'center' },
+  
+  breakdownEmpty: { padding: 15, backgroundColor: '#F9FAFB', alignItems: 'center' },
+  breakdownEmptyText: { color: '#9CA3AF', fontSize: 13, fontStyle: 'italic' },
+  breakdownContainer: { backgroundColor: '#F9FAFB', paddingHorizontal: 30, paddingVertical: 15 },
+  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  breakdownCat: { fontSize: 13, color: '#4B5563' },
+  breakdownScore: { fontSize: 13, fontWeight: 'bold' }
 });
