@@ -1,30 +1,8 @@
-import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, FlatList } from 'react-native';
+import React, { useState, useContext } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, SafeAreaView, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-const ZONES = [
-  { id: 1, area: "Anviksha", head: "Dr. Devjani Banerjee" },
-  { id: 2, area: "School of Technology", head: "Dr. Sanjukta B. Goswami" },
-  { id: 3, area: "Common Amenities", head: "Mr. Naren Acharya" },
-  { id: 4, area: "Kasturba Bhavan", head: "Dr. Abha Kalaiya" },
-  { id: 5, area: "Vikram Sarabhai Bhavan", head: "Dr. Mayank Sharma" },
-  { id: 6, area: "Swami Vivekananda Bhavan", head: "Dr. Akhilesh Prajapati" },
-  { id: 7, area: "FirePlex", head: "Mr. A. Srikrishnan" },
-  { id: 8, area: "School of Science / Management", head: "Prof. Ranjitha Banerjee" }
-];
-
-const SZH = [
-  { id: "SZH_F1", name: "Mr. Rajesh Patel", floor: "Ground Floor / Block A", zone: 1 },
-  { id: "SZH_F2", name: "Ms. Priya Sharma", floor: "First Floor / Block B", zone: 2 },
-  { id: "SZH_F3", name: "Mr. Anil Verma", floor: "Second Floor / Block C", zone: 3 },
-  { id: "SZH_F4", name: "Ms. Kavita Joshi", floor: "Ground Floor / Block D", zone: 4 },
-  { id: "SZH_F5", name: "Mr. Suresh Mehta", floor: "First Floor / Block E", zone: 5 },
-  { id: "SZH_F6", name: "Ms. Anita Singh", floor: "Second Floor / Block F", zone: 6 },
-  { id: "SZH_F7", name: "Mr. Deepak Kumar", floor: "Ground Floor / FirePlex", zone: 7 },
-  { id: "SZH_F8", name: "Ms. Ritu Gupta", floor: "First Floor / SoS", zone: 8 }
-];
-
-const szSts = ['green', 'green', 'yellow', 'green', 'green', 'red', 'yellow', 'green'];
+import { DataContext } from '../context/DataContext';
+import { getChecklistForUser } from '../utils/checklistMapper';
 
 const getStatusColor = (status) => {
   const config = {
@@ -32,12 +10,65 @@ const getStatusColor = (status) => {
     yellow: '#DAA520',
     red: '#DC3545'
   };
-  return config[status.toLowerCase()] || config.green;
+  return config[status?.toLowerCase()] || config.green;
 };
 
 export default function SubZonalComplianceTable() {
+  const { staticData } = useContext(DataContext);
+  const SZH = staticData?.subZonalHeads || [];
+
+  const [selectedSubZone, setSelectedSubZone] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+
   const handleRowPress = (item) => {
-    console.log("Sub-Zonal Data:", item);
+    setSelectedSubZone(item);
+    setModalVisible(true);
+  };
+
+  const renderModalContent = () => {
+    if (!selectedSubZone) return null;
+    
+    // Generate read-only checklist for this specific sub-zone
+    const checklistData = getChecklistForUser(selectedSubZone, staticData?.checklists || []);
+    const categories = Object.keys(checklistData);
+
+    return (
+      <Modal visible={modalVisible} animationType="slide" transparent={false}>
+        <SafeAreaView style={styles.modalSafeArea}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#111827" />
+            </TouchableOpacity>
+            <View>
+              <Text style={styles.modalTitle}>{selectedSubZone.name}'s Checklist</Text>
+              <Text style={styles.modalSubtitle}>{selectedSubZone.areasCovered} (Sub-Zone {selectedSubZone.subZone})</Text>
+            </View>
+            <View style={{ width: 24 }} />
+          </View>
+          
+          <ScrollView style={styles.modalScroll}>
+            {categories.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="document-text-outline" size={60} color="#9CA3AF" />
+                <Text style={styles.emptyText}>No checklist criteria found for this area.</Text>
+              </View>
+            ) : (
+              categories.map(cat => (
+                <View key={cat} style={styles.catCard}>
+                  <Text style={styles.catTitle}>{cat}</Text>
+                  {checklistData[cat].map((criteria, idx) => (
+                    <View key={idx} style={styles.criteriaRow}>
+                      <Ionicons name="checkbox" size={20} color="#1A8C4E" />
+                      <Text style={styles.criteriaText}>{criteria}</Text>
+                    </View>
+                  ))}
+                </View>
+              ))
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+    );
   };
 
   const renderHeader = () => (
@@ -46,7 +77,7 @@ export default function SubZonalComplianceTable() {
         <Text style={styles.headerText}>ZONE</Text>
       </View>
       <View style={{ flex: 1.8, alignItems: 'flex-start' }}>
-        <Text style={styles.headerText}>FLOOR / AREA</Text>
+        <Text style={styles.headerText}>SUB-ZONE AREA</Text>
       </View>
       <View style={{ flex: 1.4, alignItems: 'flex-start' }}>
         <Text style={styles.headerText}>HEAD</Text>
@@ -55,6 +86,14 @@ export default function SubZonalComplianceTable() {
   );
 
   const renderRow = ({ item, index }) => {
+    // Extract Zone Number safely
+    const zoneMatch = item.zone?.match(/\d+/);
+    const zNum = zoneMatch ? zoneMatch[0] : '?';
+    
+    // For demo purposes, we randomly assign green/yellow/red, or use item.status if available
+    const szSts = ['green', 'green', 'yellow', 'green', 'green', 'red', 'yellow', 'green'];
+    const assignedStatus = item.status || szSts[index % szSts.length];
+
     return (
       <TouchableOpacity 
         style={styles.row} 
@@ -62,12 +101,13 @@ export default function SubZonalComplianceTable() {
         activeOpacity={0.6}
       >
         <View style={{ flex: 0.8, alignItems: 'flex-start' }}>
-          <View style={[styles.zoneBadge, { backgroundColor: getStatusColor(szSts[index]) }]}>
-            <Text style={styles.zoneBadgeText}>Z{item.zone}</Text>
+          <View style={[styles.zoneBadge, { backgroundColor: getStatusColor(assignedStatus) }]}>
+            <Text style={styles.zoneBadgeText}>Z{zNum}</Text>
           </View>
         </View>
         <View style={{ flex: 1.8, alignItems: 'flex-start', paddingRight: 8 }}>
-          <Text style={styles.cellFloor}>{item.floor}</Text>
+          <Text style={styles.cellFloor}>{item.areasCovered || 'Unknown Area'}</Text>
+          <Text style={styles.cellSubZone}>Sub-Zone {item.subZone}</Text>
         </View>
         <View style={{ flex: 1.4, alignItems: 'flex-start', paddingRight: 8 }}>
           <Text style={styles.cellHead}>{item.name}</Text>
@@ -89,12 +129,14 @@ export default function SubZonalComplianceTable() {
         {renderHeader()}
         <FlatList
           data={SZH}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id || item.email}
           renderItem={renderRow}
           scrollEnabled={false}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       </View>
+      
+      {renderModalContent()}
     </View>
   );
 }
@@ -138,14 +180,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: '#F5EFE6', // Beige/cream color matching the image
+    backgroundColor: '#F5EFE6',
     borderBottomWidth: 1,
     borderColor: '#EFE5D8',
   },
   headerText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#8C1B2F', // Maroon text matching image
+    color: '#8C1B2F',
     textTransform: 'uppercase',
   },
   row: {
@@ -161,12 +203,18 @@ const styles = StyleSheet.create({
   },
   cellFloor: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#1C0A0E', // Dark Charcoal
+    fontWeight: '600',
+    color: '#1C0A0E',
+  },
+  cellSubZone: {
+    fontSize: 12,
+    color: '#7A4050',
+    marginTop: 2,
   },
   cellHead: {
     fontSize: 13,
-    color: '#7A4050', // Brownish gray matching image
+    color: '#4B5563',
+    fontWeight: '500'
   },
   zoneBadge: {
     width: 28,
@@ -184,5 +232,76 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: 'bold',
+  },
+  modalSafeArea: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  backButton: {
+    padding: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+    textAlign: 'center'
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  modalScroll: {
+    flex: 1,
+    padding: 20,
+  },
+  catCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  catTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#8C1B2F',
+    marginBottom: 12,
+  },
+  criteriaRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  criteriaText: {
+    fontSize: 14,
+    color: '#374151',
+    marginLeft: 10,
+    flex: 1,
+    lineHeight: 20,
+  },
+  emptyState: {
+    alignItems: 'center',
+    marginTop: 60,
+  },
+  emptyText: {
+    color: '#6B7280',
+    fontSize: 16,
+    marginTop: 10,
   }
 });

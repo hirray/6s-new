@@ -167,7 +167,7 @@ export default function LoginScreen() {
         role: 'SubZonalHead', 
         id, 
         name: 'Ms. Dulari Raj',
-        data: { id, email: id, name: 'Ms. Dulari Raj', zone: 'Zone 1', subZone: '1' }
+        data: { id, email: id, name: 'Ms. Dulari Raj', zone: 'Zone 1', subZone: '1', areasCovered: 'Main Entrance, Lobby, Reception, Admission' }
       });
     } else if (id === 'devjani.banerjee@gsfcuniversity.ac.in') {
       login({ 
@@ -197,12 +197,12 @@ export default function LoginScreen() {
         setErrorText('Invalid password.');
       }
     } else if ((id === 'subzone' || id === 'subzone@gsfc.edu') && pass === 'subzone') {
-      // Fallback for the test subzonal head mapped to All Labs for demo purposes
+      // Fallback for the test subzonal head mapped to Dulari Raj for demo purposes
       login({ 
         role: 'SubZonalHead', 
-        id: 'amit.singh@gsfcuniversity.ac.in', 
-        name: 'Dr. Amit Singh',
-        data: { id: 'amit.singh@gsfcuniversity.ac.in', name: 'Dr. Amit Singh', zone: 'Zone 2', subZone: '1', areasCovered: 'All Labs' }
+        id: 'dulari.raj@gsfcuniversity.ac.in', 
+        name: 'Ms. Dulari Raj',
+        data: { id: 'dulari.raj@gsfcuniversity.ac.in', name: 'Ms. Dulari Raj', zone: 'Zone 1', subZone: '1', areasCovered: 'Main Entrance, Lobby, Reception, Admission' }
       });
     } else if (id === '24bt04d224@gsfcuniversity.ac.in') {
       login({ role: 'Student', id: 'STU_1', name: 'Hirra' });

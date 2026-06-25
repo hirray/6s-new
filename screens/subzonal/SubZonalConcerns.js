@@ -17,8 +17,11 @@ export default function SubZonalConcerns() {
     if (!currentUser?.data) return false;
     const cZoneNum = extractZoneNumber(c.zone);
     const userZoneNum = extractZoneNumber(currentUser.data.zone);
-    // Must match both zone AND subzone (areasCovered)
-    return (cZoneNum === userZoneNum) && (c.subZone === currentUser.data.areasCovered || !currentUser.data.areasCovered);
+    // c.subZone contains a long string like "Sub-Zone 1: ... Main Entrance...", so we check if it includes the area
+    return (cZoneNum === userZoneNum) && (
+      !currentUser.data.areasCovered || 
+      (c.subZone && c.subZone.includes(currentUser.data.areasCovered))
+    );
   });
 
   return (
@@ -45,8 +48,11 @@ export default function SubZonalConcerns() {
               <Text style={styles.dateText}>{c.timestamp}</Text>
             </View>
             
-            <Text style={styles.subZoneText}>{c.category} - {c.location}</Text>
+            <Text style={styles.subZoneText}>{c.category} - {c.subZone}</Text>
             <Text style={styles.descText}>{c.desc}</Text>
+            {c.imageUri && (
+              <Image source={{ uri: c.imageUri }} style={styles.concernImage} resizeMode="cover" />
+            )}
 
             {c.status === 'Pending' && (
               <View style={styles.resolveSection}>
@@ -158,6 +164,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#111827',
     lineHeight: 22,
+    marginBottom: 12,
+  },
+  concernImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 8,
+    marginTop: 8,
+    marginBottom: 8,
+    backgroundColor: '#F3F4F6'
   },
   resolveSection: {
     marginTop: 16,

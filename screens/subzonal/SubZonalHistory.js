@@ -15,7 +15,7 @@ export default function SubZonalHistory() {
       ) : (
         mySubmissions.map(sub => (
           <View key={sub.id} style={styles.card}>
-            <Text style={styles.date}>{new Date(sub.date || sub.createdAt).toLocaleString()}</Text>
+            <Text style={styles.date}>{sub.date ? sub.date : new Date(sub.createdAt).toLocaleString()}</Text>
             <Text style={styles.score}>Score: {sub.score}%</Text>
           </View>
         ))

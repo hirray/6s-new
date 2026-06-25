@@ -215,6 +215,10 @@ export default function AdminHome() {
               ))}
             </ImageBackground>
           </ReactNativeZoomableView>
+          
+          {selectedZone && (
+            <FloatingZonePopup selectedZone={selectedZone} />
+          )}
         </View>
 
         <View style={styles.mapCardDivider} />
@@ -234,10 +238,6 @@ export default function AdminHome() {
           </View>
         </View>
       </View>
-
-        {selectedZone && (
-          <FloatingZonePopup selectedZone={selectedZone} />
-        )}
     </ScrollView>
     </SafeAreaView>
   );
@@ -288,34 +288,19 @@ const styles = StyleSheet.create({
   markerCircle: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.8, shadowRadius: 4, elevation: 5 },
   markerText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
   
-  // Detail Modal Styles
-  detailModalContainer: { flex: 1, backgroundColor: '#FAF9F6' },
-  detailModalSafeArea: { flex: 1 },
-  detailModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15 },
-  backButton: { padding: 5 },
-  detailModalTitle: { fontSize: 20, fontWeight: 'bold', color: '#6E2A36' },
-  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', marginHorizontal: 20, borderRadius: 12, paddingHorizontal: 15, paddingVertical: 12, shadowColor: '#000', shadowOffset: {width:0, height:2}, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, marginBottom: 20 },
-  searchIcon: { marginRight: 10 },
-  searchInput: { flex: 1, fontSize: 16, color: '#333' },
-  detailScroll: { flex: 1, paddingHorizontal: 20 },
-  
-  accordionCard: { backgroundColor: '#FFFFFF', borderRadius: 16, paddingVertical: 20, shadowColor: '#000', shadowOffset: {width:0, height:4}, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3, marginBottom: 30 },
-  accordionHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 },
-  accordionIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
-  accordionTitle: { flex: 1, fontSize: 16, fontWeight: 'bold', color: '#111827' },
-  
-  tableHeaderRow: { flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  tableHeaderCol: { fontSize: 12, color: '#6B7280', fontWeight: '600' },
-  
-  subZoneRowContainer: { borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  subZoneRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 18 },
-  subZoneName: { fontSize: 14, fontWeight: '700', color: '#111827' },
-  subZoneMetric: { fontSize: 14, fontWeight: 'bold', textAlign: 'center' },
-  
-  breakdownEmpty: { padding: 15, backgroundColor: '#F9FAFB', alignItems: 'center' },
-  breakdownEmptyText: { color: '#9CA3AF', fontSize: 13, fontStyle: 'italic' },
-  breakdownContainer: { backgroundColor: '#F9FAFB', paddingHorizontal: 30, paddingVertical: 15 },
-  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  breakdownCat: { fontSize: 13, color: '#4B5563' },
-  breakdownScore: { fontSize: 13, fontWeight: 'bold' }
+  // Floating Popup Styles
+  floatingPopup: { position: 'absolute', top: 16, right: 16, width: 280, backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10, borderWidth: 1, borderColor: '#E5E7EB', zIndex: 100 },
+  popupHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  popupZoneIdCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  popupZoneIdText: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
+  popupHeaderTexts: { flex: 1 },
+  popupZoneName: { fontSize: 16, fontWeight: 'bold', color: '#111827' },
+  popupManager: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  popupDivider: { height: 1, backgroundColor: '#F3F4F6', marginBottom: 16 },
+  popupStatRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  popupStatLabel: { fontSize: 13, color: '#6B7280' },
+  popupStatValue: { fontSize: 13, color: '#111827', fontWeight: '600' },
+  popupScoreLabel: { fontSize: 12, color: '#6B7280', marginTop: 12, marginBottom: 8 },
+  popupScoreBarBg: { height: 6, backgroundColor: '#F3F4F6', borderRadius: 3, overflow: 'hidden' },
+  popupScoreBarFill: { height: '100%', borderRadius: 3 },
 });

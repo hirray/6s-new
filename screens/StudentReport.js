@@ -465,7 +465,9 @@ export default function StudentReport({ navigation }) {
                   <Text style={styles.reportMetaValue}>{report.date}</Text>
                 </View>
                 <View style={styles.reportMetaRight}>
-                  {report.image && <Ionicons name="image" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />}
+                  {report.image && (
+                    <Image source={{ uri: report.image }} style={{ width: 40, height: 40, borderRadius: 6, marginRight: 12, backgroundColor: '#F3F4F6' }} resizeMode="cover" />
+                  )}
                   <View>
                     <Text style={styles.reportMetaLabel}>Concern ID</Text>
                     <Text style={styles.reportMetaValueId}>{report.id}</Text>

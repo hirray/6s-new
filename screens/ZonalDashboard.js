@@ -13,7 +13,22 @@ export default function ZonalDashboard({ navigation }) {
   const { currentUser, db, SZH } = useContext(DataContext);
   const [activeTab, setActiveTab] = useState('Home');
 
-  const zoneName = currentUser?.data?.area || currentUser?.data?.zone || 'Zone';
+  const zoneNumberMatch = currentUser?.data?.zone?.match(/\d+/);
+  const zoneNumber = zoneNumberMatch ? parseInt(zoneNumberMatch[0], 10) : null;
+  
+  const ZONES_DATA = [
+    { id: 1, area: "Anviksha" },
+    { id: 2, area: "School of Technology" },
+    { id: 3, area: "Common Amenities" },
+    { id: 4, area: "Kasturba Bhavan" },
+    { id: 5, area: "Vikram Sarabhai Bhavan" },
+    { id: 6, area: "Swami Vivekananda Bhavan" },
+    { id: 7, area: "FirePlex" },
+    { id: 8, area: "School of Science / Management" }
+  ];
+  
+  const matchedZone = ZONES_DATA.find(z => z.id === zoneNumber);
+  const zoneName = matchedZone ? `Zone ${zoneNumber} - ${matchedZone.area}` : (currentUser?.data?.area || currentUser?.data?.zone || 'Zone');
   
   // Get unique subzones from the main data source for this zone
   const subZonesInZone = SUB_ZONAL_HEADS.filter(h => h.zone === currentUser?.data?.zone);
@@ -35,7 +50,7 @@ export default function ZonalDashboard({ navigation }) {
       </View>
       <View style={styles.titleSection}>
         <Text style={styles.mainTitle}>{zoneName}</Text>
-        <Text style={styles.subTitle}>Zonal Head Dashboard</Text>
+        <Text style={styles.subTitle}>{currentUser?.data?.name ? `${currentUser.data.name} • Zonal Head` : 'Zonal Head Dashboard'}</Text>
       </View>
 
       {/* Hero Performance Card */}
