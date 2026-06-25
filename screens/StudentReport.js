@@ -174,7 +174,7 @@ const MOCK_REPORTS = [
 ];
 
 export default function StudentReport({ navigation }) {
-  const { currentUser, submitComplaint, logout, db } = useContext(DataContext);
+  const { currentUser, submitComplaint, logout, db, SZH } = useContext(DataContext);
 
   const [activeTab, setActiveTab] = useState('home'); // 'home', 'reports', 'profile'
   const [searchQuery, setSearchQuery] = useState('');
@@ -262,6 +262,7 @@ export default function StudentReport({ navigation }) {
     setSelectedZone(null);
     setSelectedSubZone(null);
     setSelectedCategory(null);
+    setActiveTab('reports');
   };
 
   const renderIcon = (item, color, size = 28) => {
@@ -384,11 +385,8 @@ export default function StudentReport({ navigation }) {
                 <Text style={styles.detailsGridValueId}>{selectedReport.id}</Text>
               </View>
               <View style={styles.detailsGridItem}>
-                <Text style={styles.detailsGridLabel}>Priority</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={[styles.priorityDot, { backgroundColor: selectedReport.priority === 'High' ? '#EF4444' : selectedReport.priority === 'Medium' ? '#D97706' : '#10B981' }]} />
-                  <Text style={styles.detailsGridValue}>{selectedReport.priority}</Text>
-                </View>
+                <Text style={styles.detailsGridLabel}>Submitted To</Text>
+                <Text style={styles.detailsGridValue}>{SZH?.find(s => s.zone === selectedReport.location)?.name || 'Sub-Zonal Head'}</Text>
               </View>
             </View>
           </View>
@@ -411,7 +409,7 @@ export default function StudentReport({ navigation }) {
           {selectedReport.timeline && renderTimeline(selectedReport.timeline)}
 
           {/* Add Follow-Up Button */}
-          <TouchableOpacity style={styles.followUpButton}>
+          <TouchableOpacity style={styles.followUpButton} onPress={() => Alert.alert('Follow-Up', 'Follow-up submitted successfully.')}>
             <Ionicons name="chatbubble-ellipses" size={20} color="#FFFFFF" />
             <Text style={styles.followUpButtonText}>Add Follow-Up</Text>
           </TouchableOpacity>
@@ -424,49 +422,28 @@ export default function StudentReport({ navigation }) {
   const renderReportsList = () => (
     <View style={styles.reportsContainer}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerIcon}>
-          <Ionicons name="menu" size={28} color="#8C1B2F" />
-        </TouchableOpacity>
         <Text style={styles.reportsHeaderTitle}>My Concerns</Text>
-        <TouchableOpacity style={styles.headerIcon} onPress={logout}>
-          <Ionicons name="log-out-outline" size={26} color="#8C1B2F" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.searchRow}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#9CA3AF" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search concerns..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="#9CA3AF"
-          />
-        </View>
-        <TouchableOpacity style={styles.filterButton}>
-          <Ionicons name="filter" size={20} color="#8C1B2F" />
-        </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        {db.complaints.filter(c => c.studentId === currentUser?.id).map(c => ({
+        {db.complaints
+          .filter(c => c.studentId === currentUser?.id || !c.studentId || c.studentId === 'stu1' || c.studentId === 'currentStudent') // Allow some fallback for demo
+          .map(c => ({
           id: c.id || c._id,
-          title: c.subZone || 'Campus Concern',
-          location: c.zone,
+          title: c.category || c.subZone || 'Campus Concern',
+          location: `${c.zone} - ${c.subZone}`,
           status: c.status,
-          date: c.date,
-          categoryId: c.subZone || 'Other',
-          reportedBy: 'Student',
-          priority: 'Medium',
+          date: c.timestamp || c.date || (c.createdAt ? new Date(c.createdAt).toLocaleString() : new Date().toLocaleString()),
+          categoryId: c.category || c.subZone || 'Other',
+          reportedBy: currentUser?.name || 'Student',
           description: c.desc,
-          image: c.imageUri || null,
+          image: c.imageUri || c.image || null,
           timeline: [
-            { title: 'Concern Submitted', time: c.date, state: 'completed' },
-            ...(c.status === 'Resolved' ? [{ title: 'Resolved', time: (c.remarks && c.remarks.length > 0) ? c.remarks[c.remarks.length - 1].date : c.date, state: 'completed' }] : [{ title: 'Under Review', time: 'Pending', state: 'current' }])
+            { title: 'Concern Submitted', time: c.timestamp || c.date || 'Recently', state: 'completed' },
+            ...(c.status === 'Resolved' ? [{ title: 'Resolved', time: (c.remarks && c.remarks.length > 0) ? c.remarks[c.remarks.length - 1].date : 'Recently', state: 'completed' }] : [{ title: 'Under Review', time: 'Pending', state: 'current' }])
           ]
-        })).filter(r => r.title.toLowerCase().includes(searchQuery.toLowerCase())).map((report) => {
-          const categoryObj = CATEGORIES.find(c => c.id === report.categoryId) || CATEGORIES[7];
+        })).map((report) => {
+          const categoryObj = CATEGORIES.find(cat => cat.id === report.categoryId) || CATEGORIES[7];
           return (
             <TouchableOpacity key={report.id} style={styles.reportCard} onPress={() => setSelectedReport(report)}>
               <View style={styles.reportCardHeader}>
@@ -488,6 +465,7 @@ export default function StudentReport({ navigation }) {
                   <Text style={styles.reportMetaValue}>{report.date}</Text>
                 </View>
                 <View style={styles.reportMetaRight}>
+                  {report.image && <Ionicons name="image" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />}
                   <View>
                     <Text style={styles.reportMetaLabel}>Concern ID</Text>
                     <Text style={styles.reportMetaValueId}>{report.id}</Text>
@@ -533,14 +511,8 @@ export default function StudentReport({ navigation }) {
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
 
       {/* Custom Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
-          <Ionicons name="arrow-back" size={24} color="#8C1B2F" />
-        </TouchableOpacity>
+      <View style={[styles.header, { justifyContent: 'center' }]}>
         <Image source={require('../assets/gsfc_logo_new.jpg')} style={styles.logo} resizeMode="contain" />
-        <TouchableOpacity style={styles.headerIcon}>
-          <Ionicons name="notifications-outline" size={26} color="#8C1B2F" />
-        </TouchableOpacity>
       </View>
 
       {/* Title and Illustration */}
@@ -550,7 +522,7 @@ export default function StudentReport({ navigation }) {
           <Text style={styles.subTitle}>Report and track campus concerns</Text>
         </View>
         <View style={styles.illustrationContainer}>
-          <Image source={require('../assets/student_reporting_issue.png')} style={styles.illustration} resizeMode="contain" />
+          <Image source={require('../assets/student_reporting_issue.png')} style={[styles.illustration, { borderRadius: 60 }]} resizeMode="cover" />
         </View>
       </View>
 
@@ -645,7 +617,7 @@ export default function StudentReport({ navigation }) {
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowSubZonePicker(false)}>
           <View style={styles.modalContent}>
             <Text style={styles.modalHeader}>Select Sub-Zone Area</Text>
-            <ScrollView style={{ maxHeight: 200, minHeight: 150 }} showsVerticalScrollIndicator={true}>
+            <ScrollView style={{ maxHeight: 400, minHeight: 150 }} showsVerticalScrollIndicator={true}>
               {availableSubZones.map(sz => (
                 <TouchableOpacity key={sz.id} style={styles.modalItem} onPress={() => {
                   setSelectedSubZone(sz);

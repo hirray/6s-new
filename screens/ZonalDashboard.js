@@ -1,398 +1,485 @@
-import React, { useContext, useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, FlatList } from 'react-native';
+import React, { useState, useContext } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, Platform, StatusBar } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../context/DataContext';
-import ZonalSubZoneDetail from './zonal/ZonalSubZoneDetail';
 
-export default function ZonalDashboard() {
-  const { currentUser, SZH, db, setDb } = useContext(DataContext);
-  const [remarkText, setRemarkText] = useState('');
-  const [selectedSubZone, setSelectedSubZone] = useState('');
+import ZonalSubZoneLogs from './zonal/ZonalSubZoneLogs';
+import ZonalConcerns from './zonal/ZonalConcerns';
+import ZonalAnalytics from './zonal/ZonalAnalytics';
+import ZonalProfile from './zonal/ZonalProfile';
+import { SUB_ZONAL_HEADS } from '../data/subZonalHeads';
 
-  const [selectedSZH, setSelectedSZH] = useState(null);
+export default function ZonalDashboard({ navigation }) {
+  const { currentUser, db, SZH } = useContext(DataContext);
+  const [activeTab, setActiveTab] = useState('Home');
 
-  // 1. Filter Subordinates
-  const mySZHs = SZH.filter(s => s.zone === currentUser?.data?.id);
+  const zoneName = currentUser?.data?.area || currentUser?.data?.zone || 'Zone';
   
-  // 2. Filter Complaints
-  const myComplaints = db.complaints.filter(c => c.zone === currentUser?.data?.area || (c.zone && c.zone.includes(`Zone ${currentUser?.data?.id}`)));
-
-  // 3. Filter Remarks
-  const myRemarks = db.remarks.filter(r => r.author === currentUser?.name);
-
-  const handleApprove = (id) => {
-    Alert.alert('Success', `Log for ${id} has been approved.`);
-  };
-
-  const handleSendRemark = () => {
-    if (!selectedSubZone) {
-      Alert.alert('Error', 'Please select a subordinate.');
-      return;
+  // Get unique subzones from the main data source for this zone
+  const subZonesInZone = SUB_ZONAL_HEADS.filter(h => h.zone === currentUser?.data?.zone);
+  const uniqueAreasMap = {};
+  subZonesInZone.forEach(h => {
+    if(!uniqueAreasMap[h.areasCovered]) {
+      uniqueAreasMap[h.areasCovered] = h;
     }
-    if (!remarkText.trim()) {
-      Alert.alert('Error', 'Please enter a remark.');
-      return;
-    }
-    
-    // Mock pushing to db.remarks
-    const newRemark = {
-      id: Date.now().toString(),
-      target: selectedSubZone,
-      text: remarkText,
-      date: new Date().toLocaleString(),
-      author: currentUser?.name
-    };
+  });
+  const uniqueAreas = Object.values(uniqueAreasMap);
 
-    setDb(prev => ({
-      ...prev,
-      remarks: [newRemark, ...prev.remarks]
-    }));
-
-    Alert.alert('Remark Sent', `Your feedback has been sent to ${selectedSubZone}.`);
-    setRemarkText('');
-    setSelectedSubZone('');
-  };
-
-  if (selectedSZH) {
-    return <ZonalSubZoneDetail subZone={selectedSZH} onBack={() => setSelectedSZH(null)} />;
-  }
-
-  return (
-    <ScrollView style={styles.container}>
-      {/* A. Header Section */}
-      <View style={styles.headerSection}>
-        <Text style={styles.zoneTitle}>Zone {currentUser?.data?.id} — {currentUser?.data?.area}</Text>
-        <Text style={styles.headName}>Zonal Head: {currentUser?.name}</Text>
-      </View>
-
-      {/* B. Sub-Zonal Logs Table (Card 1) */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>📋 Sub-Zonal Head Logs</Text>
-        {mySZHs.map((sz, index) => {
-          // Find latest submission for this SZH
-          const latestLog = db.checklistSubmissions
-            .filter(sub => sub.subZonalHeadId === sz.id)
-            .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-
-          const hasSubmitted = !!latestLog;
-          const score = hasSubmitted ? latestLog.score : 0;
-          const statusColor = score >= 85 ? '#1A8C4E' : score >= 60 ? '#B07D10' : '#C0182A';
-
-          return (
-            <TouchableOpacity 
-              key={sz.id} 
-              style={styles.tableRow}
-              onPress={() => hasSubmitted ? setSelectedSZH(sz) : Alert.alert('Not Submitted', 'No checklist submitted yet.')}
-            >
-              <View style={{ flex: 1.5 }}>
-                <Text style={styles.floorText}>{sz.floor}</Text>
-                <Text style={styles.nameText}>{sz.name}</Text>
-              </View>
-              <View style={{ flex: 1, alignItems: 'center' }}>
-                <Text style={styles.timeText}>{hasSubmitted ? latestLog.date.split(',')[1] : 'No Log'}</Text>
-                <View style={[styles.statusBadge, { backgroundColor: hasSubmitted ? statusColor : '#A0A0A0' }]}>
-                  <Text style={styles.statusBadgeText}>{hasSubmitted ? `${score}%` : 'Pending'}</Text>
-                </View>
-              </View>
-              <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                <TouchableOpacity 
-                  style={[styles.approveBtn, !hasSubmitted && { opacity: 0.5 }]} 
-                  onPress={() => hasSubmitted ? handleApprove(sz.id) : null}
-                  disabled={!hasSubmitted}
-                >
-                  <Text style={styles.approveBtnText}>Approve</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* C. Send Remark / Feedback (Card 2) */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>💬 Send Remark / Feedback</Text>
-        <Text style={styles.label}>Select Subordinate</Text>
-        
-        {/* Mock Dropdown / Picker */}
-        <View style={styles.mockSelectContainer}>
-          {mySZHs.map(sz => (
-            <TouchableOpacity 
-              key={sz.id} 
-              style={[styles.mockOption, selectedSubZone === sz.name && styles.mockOptionSelected]}
-              onPress={() => setSelectedSubZone(sz.name)}
-            >
-              <Text style={[styles.mockOptionText, selectedSubZone === sz.name && styles.mockOptionTextSelected]}>
-                {sz.name} ({sz.floor})
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.label}>Remark</Text>
-        <TextInput
-          style={styles.textArea}
-          placeholder="Write your feedback here..."
-          placeholderTextColor="#A0A0A0"
-          multiline
-          numberOfLines={4}
-          value={remarkText}
-          onChangeText={setRemarkText}
-        />
-
-        <TouchableOpacity style={styles.submitBtn} onPress={handleSendRemark}>
-          <Text style={styles.submitBtnText}>Send Remark</Text>
+  const renderHomeTab = () => (
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+      {/* Header */}
+      <View style={[styles.header, { justifyContent: 'space-between' }]}>
+        <TouchableOpacity style={styles.profilePlaceholder}>
+           <Ionicons name="person-circle" size={44} color="#CBD5E1" />
         </TouchableOpacity>
       </View>
-
-      {/* D. Remark History (Card 4) */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>📝 Remark History</Text>
-        {myRemarks.length === 0 ? (
-          <Text style={styles.mutedText}>You have not sent any remarks yet.</Text>
-        ) : (
-          myRemarks.map(r => (
-            <View key={r.id} style={styles.remarkRow}>
-              <View style={styles.remarkHeader}>
-                <Text style={styles.remarkTarget}>To: {r.target}</Text>
-                <Text style={styles.remarkTime}>{r.date}</Text>
-              </View>
-              <Text style={styles.remarkText}>{r.text}</Text>
-            </View>
-          ))
-        )}
+      <View style={styles.titleSection}>
+        <Text style={styles.mainTitle}>{zoneName}</Text>
+        <Text style={styles.subTitle}>Zonal Head Dashboard</Text>
       </View>
 
-      {/* E. Floor Concerns / Complaints (Card 5) */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>🚨 Zone Concerns</Text>
-        {myComplaints.length === 0 ? (
-          <Text style={styles.mutedText}>No concerns raised in this zone.</Text>
+      {/* Hero Performance Card */}
+      <View style={styles.heroCard}>
+        <View style={styles.heroContentRow}>
+          {/* Mock Circular Progress */}
+          <View style={styles.progressCircleContainer}>
+            <View style={styles.progressCircleOuter}>
+              <View style={styles.progressCircleInner}>
+                <Text style={styles.progressScoreText}>91%</Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.heroTextContent}>
+            <Text style={styles.heroTitle}>Excellent Performance</Text>
+            <Text style={styles.heroSubtitle}>Keep up the good work</Text>
+            <View style={styles.heroDivider} />
+            <Text style={styles.heroLastUpdatedLabel}>Last Updated</Text>
+            <Text style={styles.heroLastUpdatedTime}>18 Jun 2026 • 09:30 AM</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Sub-Zone Performance */}
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitle}>Sub-Zone Performance</Text>
+      </View>
+      <View style={styles.listCardContainer}>
+        {uniqueAreas.length === 0 ? (
+          <Text style={{ color: '#64748B' }}>No Sub-Zones found.</Text>
         ) : (
-          myComplaints.map(c => {
-            // Find who is in charge of this floor
-            const inCharge = mySZHs.find(sz => c.desc.toLowerCase().includes(sz.floor.toLowerCase().split('/')[0]))?.name || 'Assigned Staff';
+          uniqueAreas.map((item, index) => {
+            // Fetch real score from db if available, else mock
+            const latestLog = db.checklistSubmissions
+              .filter(sub => sub.subZonalHeadId === item.id)
+              .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+            const score = latestLog ? latestLog.score : Math.floor(Math.random() * 40) + 60; // Mock score if none
+            const pending = db.complaints.filter(c => c.zone === item.zone && c.subZone === item.areasCovered && c.status !== 'Resolved').length;
+            
+            const color = score >= 85 ? '#10B981' : score >= 60 ? '#F97316' : '#EF4444';
+
             return (
-              <View key={c.id} style={styles.complaintRow}>
-                <View style={styles.complaintHeader}>
-                  <Text style={styles.inChargeText}>In-Charge: {inCharge}</Text>
-                  <Text style={styles.complaintTime}>{c.date}</Text>
+              <View key={index} style={styles.performanceListItem}>
+                <Text style={styles.performanceFloorName} numberOfLines={2}>{item.areasCovered}</Text>
+                <View style={styles.performanceBarBg}>
+                  <View style={[styles.performanceBarFill, { width: `${score}%`, backgroundColor: color }]} />
                 </View>
-                <Text style={styles.complaintDesc}>{c.desc}</Text>
-                <View style={styles.actionStatus}>
-                  <Text style={styles.actionText}>Action: {c.status}</Text>
-                </View>
+                <Text style={styles.performanceScoreText}>{score}%</Text>
+                <Text style={styles.performancePendingLabel}>Pending</Text>
+                <Text style={styles.performancePendingValue}>{pending}</Text>
               </View>
             );
           })
         )}
       </View>
+
     </ScrollView>
+  );
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.mainContainer}>
+        
+        {/* Render Tab Content */}
+        {activeTab === 'Home' && renderHomeTab()}
+        {activeTab === 'Sub Zone' && <ZonalSubZoneLogs onBackToHome={() => setActiveTab('Home')} />}
+        {activeTab === 'Inspection' && <ZonalConcerns onBackToHome={() => setActiveTab('Home')} />}
+        {activeTab === 'Analytics' && <ZonalAnalytics onBackToHome={() => setActiveTab('Home')} />}
+        {activeTab === 'Profile' && <ZonalProfile />}
+
+        {/* Custom Bottom Navigation Bar */}
+        <View style={styles.bottomNavContainer}>
+          <View style={styles.bottomNavBackground}>
+            {[
+              { key: 'Home', icon: 'home-outline', activeIcon: 'home', label: 'Home' },
+              { key: 'Sub Zone', icon: 'business-outline', activeIcon: 'business', label: 'Sub Zone' },
+              { key: 'Inspection', icon: 'shield-checkmark-outline', activeIcon: 'shield-checkmark', label: 'Inspection' },
+              { key: 'Analytics', icon: 'document-text-outline', activeIcon: 'document-text', label: 'Analytics' },
+              { key: 'Profile', icon: 'person-outline', activeIcon: 'person', label: 'Profile' }
+            ].map(tab => {
+              const isActive = activeTab === tab.key;
+              return (
+                <TouchableOpacity 
+                  key={tab.key} 
+                  style={styles.navItem} 
+                  onPress={() => setActiveTab(tab.key)}
+                  activeOpacity={0.8}
+                >
+                  {isActive ? (
+                    <View style={styles.activeNavPill}>
+                      <Ionicons name={tab.activeIcon} size={24} color="#611624" />
+                      <Text style={styles.activeNavLabel}>{tab.label}</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.inactiveNavItem}>
+                      <Ionicons name={tab.icon} size={24} color="#F1F5F9" />
+                      <Text style={styles.inactiveNavLabel}>{tab.label}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#FBF7F2',
-    padding: 16,
+    backgroundColor: '#FDFBF7', // Cream background from mockup
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
-  headerSection: {
+  mainContainer: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  titleSection: {
     marginBottom: 20,
-    paddingHorizontal: 4,
   },
-  zoneTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#8C1B2F',
-    fontFamily: 'serif',
+  mainTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#611624', // Deep Maroon
+    letterSpacing: -0.5,
+  },
+  subTitle: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  heroCard: {
+    backgroundColor: '#611624', // Deep Maroon Background
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 24,
+    shadowColor: '#611624',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  heroContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  progressCircleContainer: {
+    marginRight: 20,
+  },
+  progressCircleOuter: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 6,
+    borderColor: 'rgba(255,255,255,0.2)', // Mocking the un-filled ring
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderLeftColor: '#FFFFFF', // Mocking the filled ring
+    borderTopColor: '#FFFFFF',
+    borderRightColor: '#FFFFFF',
+    transform: [{ rotate: '45deg' }], // Rotate to show a 91% gap at bottom left
+  },
+  progressCircleInner: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    justifyContent: 'center',
+    alignItems: 'center',
+    transform: [{ rotate: '-45deg' }], // Counter rotate text
+  },
+  progressScoreText: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  heroTextContent: {
+    flex: 1,
+  },
+  heroTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
     marginBottom: 4,
   },
-  headName: {
-    fontSize: 14,
-    color: '#4B5563',
+  heroSubtitle: {
+    color: '#34D399', // Bright Green
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  heroDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 40,
+    marginBottom: 12,
+  },
+  heroLastUpdatedLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+    marginBottom: 2,
+  },
+  heroLastUpdatedTime: {
+    color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: '600',
   },
-  card: {
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  gridCard: {
+    width: '48%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#1C0A0E',
-    shadowOpacity: 0.08,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
     shadowRadius: 10,
-    elevation: 3,
+    elevation: 2,
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#8C1B2F',
+  gridCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
     marginBottom: 16,
   },
-  tableRow: {
+  gridCardLabel: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginLeft: 8,
+    lineHeight: 16,
+  },
+  gridCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  gridCardValue: {
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  viewAllText: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    marginTop: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  viewAllLink: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#611624', // Maroon
+  },
+  listCardContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  performanceListItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5EFE6',
   },
-  floorText: {
+  performanceFloorName: {
+    width: 80,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  performanceBarBg: {
+    flex: 1,
+    height: 4,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 2,
+    marginHorizontal: 12,
+    overflow: 'hidden',
+  },
+  performanceBarFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  performanceScoreText: {
+    width: 35,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1F2937',
+    textAlign: 'right',
+  },
+  performancePendingLabel: {
+    width: 50,
+    fontSize: 10,
+    color: '#9CA3AF',
+    textAlign: 'right',
+    marginLeft: 8,
+  },
+  performancePendingValue: {
+    width: 20,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1F2937',
+    textAlign: 'right',
+  },
+  alertCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#FEF2F2',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  alertIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#611624',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  alertContent: {
+    flex: 1,
+  },
+  alertTitle: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#1C0A0E',
+    fontWeight: '700',
+    color: '#1F2937',
     marginBottom: 2,
   },
-  nameText: {
-    fontSize: 12,
-    color: '#7A4050',
-  },
-  timeText: {
+  alertLocation: {
     fontSize: 11,
     color: '#4B5563',
     marginBottom: 4,
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  statusBadgeText: {
-    color: '#FFFFFF',
+  alertMeta: {
     fontSize: 10,
-    fontWeight: 'bold',
+    color: '#9CA3AF',
   },
-  approveBtn: {
-    backgroundColor: '#C4933F',
+  alertBadge: {
+    backgroundColor: '#FEF2F2',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
+    borderRadius: 12,
   },
-  approveBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
+  alertBadgeText: {
+    color: '#DC2626',
+    fontSize: 11,
+    fontWeight: '700',
   },
-  label: {
-    fontSize: 13,
-    color: '#1C0A0E',
-    fontWeight: '600',
-    marginBottom: 8,
-    marginTop: 8,
+  
+  // Custom Bottom Nav
+  bottomNavContainer: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    height: 80,
   },
-  mockSelectContainer: {
+  bottomNavBackground: {
+    flex: 1,
+    backgroundColor: '#611624', // Maroon
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
-  },
-  mockOption: {
-    backgroundColor: '#F5EFE6',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  mockOptionSelected: {
-    backgroundColor: 'rgba(140,27,47,0.1)',
-    borderColor: '#8C1B2F',
-  },
-  mockOptionText: {
-    fontSize: 12,
-    color: '#4B5563',
-  },
-  mockOptionTextSelected: {
-    color: '#8C1B2F',
-    fontWeight: 'bold',
-  },
-  textArea: {
-    backgroundColor: '#FBF7F2',
-    borderWidth: 1,
-    borderColor: 'rgba(140,27,47,0.22)',
-    borderRadius: 8,
-    padding: 12,
-    color: '#1C0A0E',
-    fontSize: 14,
-    height: 100,
-    textAlignVertical: 'top',
-    marginBottom: 16,
-  },
-  submitBtn: {
-    backgroundColor: '#8C1B2F',
-    paddingVertical: 14,
-    borderRadius: 8,
+    justifyContent: 'space-around',
     alignItems: 'center',
-  },
-  submitBtnText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  mutedText: {
-    color: '#A0A0A0',
-    fontSize: 13,
-    fontStyle: 'italic',
-  },
-  complaintRow: {
-    backgroundColor: '#F5EFE6',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  complaintHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  inChargeText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#8C1B2F',
-  },
-  complaintDesc: {
-    fontSize: 14,
-    color: '#1C0A0E',
-    marginBottom: 8,
-  },
-  complaintTime: {
-    fontSize: 11,
-    color: '#7A4050',
-  },
-  actionStatus: {
-    backgroundColor: 'rgba(176,125,16,0.1)',
-    alignSelf: 'flex-start',
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
   },
-  actionText: {
-    fontSize: 11,
-    color: '#B07D10',
-    fontWeight: 'bold',
+  navItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 60,
+    minWidth: 55,
   },
-  remarkRow: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(140,27,47,0.12)',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
+  inactiveNavItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  remarkHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  remarkTarget: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#1C0A0E',
-  },
-  remarkTime: {
+  inactiveNavLabel: {
     fontSize: 10,
-    color: '#7A4050',
+    color: '#F1F5F9',
+    marginTop: 4,
+    opacity: 0.8,
   },
-  remarkText: {
-    fontSize: 13,
-    color: '#4B5563',
+  activeNavPill: {
+    backgroundColor: '#FDFBF7', // Cream cutout
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -24, // Raise it up
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  activeNavLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#611624',
+    marginTop: 2,
   }
 });

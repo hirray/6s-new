@@ -14,10 +14,11 @@ export default function SubZonalConcerns() {
   };
 
   const myComplaints = db.complaints.filter(c => {
-    if (!currentUser?.data) return true; // fallback
+    if (!currentUser?.data) return false;
     const cZoneNum = extractZoneNumber(c.zone);
     const userZoneNum = extractZoneNumber(currentUser.data.zone);
-    return cZoneNum && userZoneNum && cZoneNum === userZoneNum;
+    // Must match both zone AND subzone (areasCovered)
+    return (cZoneNum === userZoneNum) && (c.subZone === currentUser.data.areasCovered || !currentUser.data.areasCovered);
   });
 
   return (
@@ -41,10 +42,10 @@ export default function SubZonalConcerns() {
               <View style={[styles.statusBadge, c.status === 'Resolved' && styles.statusBadgeResolved]}>
                 <Text style={[styles.statusText, c.status === 'Resolved' && styles.statusTextResolved]}>{c.status}</Text>
               </View>
-              <Text style={styles.dateText}>{c.date}</Text>
+              <Text style={styles.dateText}>{c.timestamp}</Text>
             </View>
             
-            <Text style={styles.subZoneText}>{c.subZone}</Text>
+            <Text style={styles.subZoneText}>{c.category} - {c.location}</Text>
             <Text style={styles.descText}>{c.desc}</Text>
 
             {c.status === 'Pending' && (

@@ -7,8 +7,7 @@ import { getChecklistForUser } from '../../utils/checklistMapper';
 export default function SubZonalChecklist({ category, onBack, onSaveProgress }) {
   const { currentUser, staticData } = useContext(DataContext);
   const checklistData = getChecklistForUser(currentUser?.data, staticData?.checklists || []);
-  const categoryKey = category.replace(/\s+/g, ''); // E.g., 'Set In Order' -> 'SetInOrder'
-  const items = checklistData[categoryKey] || [];
+  const items = checklistData[category] || [];
 
   // Initialize state with all boxes checked by default
   const [checklistState, setChecklistState] = useState({});

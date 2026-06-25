@@ -9,7 +9,7 @@ import axios from 'axios';
 export const DataContext = createContext();
 
 // Use 10.0.2.2 for Android Emulator, or 10.85.42.42 for physical device on Wi-Fi
-const API_URL = 'http://10.85.42.42:5000/api';
+const API_URL = 'http://10.0.2.2:5000/api';
 
 export const DataProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);

@@ -62,147 +62,53 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const ZoneDetailModal = ({ selectedZone, close, db, staticData }) => {
-  const [expandedSubZone, setExpandedSubZone] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // Get SubZonal Heads for this zone
-  const zoneId = parseInt(selectedZone.id);
-  let subZonalHeads = staticData?.subZonalHeads?.filter(sz => sz.zone === zoneId) || [];
+const FloatingZonePopup = ({ selectedZone }) => {
+  if (!selectedZone) return null;
+  const statusColor = getMarkerColor(selectedZone.status);
   
-  if (searchQuery) {
-    subZonalHeads = subZonalHeads.filter(sz => 
-      sz.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      (sz.floor && sz.floor.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-  }
-
-  const toggleSubZone = (id) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedSubZone(expandedSubZone === id ? null : id);
-  };
-
-  const getSubZoneMetrics = (sz) => {
-    // Latest submission
-    const submissions = db.checklistSubmissions
-      .filter(s => s.subZonalHeadId === sz.id)
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-    const latestSub = submissions.length > 0 ? submissions[0] : null;
-    const compliance = latestSub ? latestSub.score : 0;
-
-    // Complaints for this specific sub-zone
-    const subZoneComplaints = db.complaints.filter(c => c.subZone === sz.floor || c.subZone === sz.subZone || (c.subZone && c.subZone.includes(sz.floor)));
-    const pendings = subZoneComplaints.filter(c => c.status === 'Pending').length;
-    const resolved = subZoneComplaints.filter(c => c.status === 'Resolved' || c.status === 'Done').length;
-
-    return { compliance, pendings, resolved, latestSub };
-  };
-
-  const renderChecklistBreakdown = (latestSub) => {
-    if (!latestSub || !latestSub.scores) {
-      return (
-        <View style={styles.breakdownEmpty}>
-          <Text style={styles.breakdownEmptyText}>No checklist data available for this sub-zone yet.</Text>
-        </View>
-      );
-    }
-    
-    // Convert scores object to array if needed, assuming scores is an object mapping category to score
-    const categories = ['1S', '2S', '3S', '4S', '5S', '6S'];
-    return (
-      <View style={styles.breakdownContainer}>
-        {categories.map((cat, idx) => {
-          const score = latestSub.scores[cat] || latestSub.scores[cat.toLowerCase()] || latestSub[cat.toLowerCase()] || Math.round(latestSub.score);
-          const color = score >= 85 ? '#1A8C4E' : score >= 60 ? '#B07D10' : '#C0182A';
-          return (
-            <View key={idx} style={styles.breakdownRow}>
-              <Text style={styles.breakdownCat}>{cat} Compliance</Text>
-              <Text style={[styles.breakdownScore, { color }]}>{score}%</Text>
-            </View>
-          );
-        })}
-      </View>
-    );
-  };
-
   return (
-    <Modal visible transparent animationType="slide">
-      <View style={styles.detailModalContainer}>
-        <SafeAreaView style={styles.detailModalSafeArea}>
-          <View style={styles.detailModalHeader}>
-            <TouchableOpacity onPress={close} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#6E2A36" />
-            </TouchableOpacity>
-            <Text style={styles.detailModalTitle}>Zone Details</Text>
-            <TouchableOpacity>
-              <Ionicons name="filter" size={24} color="#6E2A36" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
-            <TextInput 
-              style={styles.searchInput}
-              placeholder="Search sub-zones..."
-              placeholderTextColor="#9CA3AF"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-
-          <ScrollView style={styles.detailScroll} showsVerticalScrollIndicator={false}>
-            <View style={styles.accordionCard}>
-              <View style={styles.accordionHeader}>
-                <View style={[styles.accordionIcon, { backgroundColor: getMarkerColor(selectedZone.status) }]}>
-                  <Ionicons name="business" size={20} color="#FFF" />
-                </View>
-                <Text style={styles.accordionTitle}>{selectedZone.name}</Text>
-                <Ionicons name="chevron-up" size={20} color="#111827" />
-              </View>
-
-              <View style={styles.tableHeaderRow}>
-                <Text style={[styles.tableHeaderCol, {flex: 2}]}></Text>
-                <Text style={[styles.tableHeaderCol, {flex: 1, textAlign: 'center'}]}>Compliance</Text>
-                <Text style={[styles.tableHeaderCol, {flex: 1, textAlign: 'center'}]}>Pendings</Text>
-                <Text style={[styles.tableHeaderCol, {flex: 1, textAlign: 'center'}]}>Resolved</Text>
-                <View style={{width: 24}} />
-              </View>
-
-              {subZonalHeads.map((sz, index) => {
-                const metrics = getSubZoneMetrics(sz);
-                const isExpanded = expandedSubZone === sz.id;
-                const compColor = metrics.compliance >= 85 ? '#1A8C4E' : metrics.compliance >= 60 ? '#B07D10' : '#C0182A';
-
-                return (
-                  <View key={sz.id} style={styles.subZoneRowContainer}>
-                    <TouchableOpacity 
-                      style={styles.subZoneRow}
-                      onPress={() => toggleSubZone(sz.id)}
-                    >
-                      <Text style={[styles.subZoneName, {flex: 2}]} numberOfLines={2}>
-                        {sz.floor || sz.name}
-                      </Text>
-                      <Text style={[styles.subZoneMetric, {flex: 1, color: compColor}]}>{metrics.compliance}%</Text>
-                      <Text style={[styles.subZoneMetric, {flex: 1, color: '#D97706'}]}>{metrics.pendings}</Text>
-                      <Text style={[styles.subZoneMetric, {flex: 1, color: '#1A8C4E'}]}>{metrics.resolved}</Text>
-                      <Ionicons name={isExpanded ? "chevron-up" : "chevron-forward"} size={20} color="#6B7280" />
-                    </TouchableOpacity>
-                    
-                    {isExpanded && renderChecklistBreakdown(metrics.latestSub)}
-                  </View>
-                );
-              })}
-              
-              {subZonalHeads.length === 0 && (
-                <View style={{padding: 20, alignItems: 'center'}}>
-                  <Text style={{color: '#6B7280'}}>No Sub-Zones assigned to this zone.</Text>
-                </View>
-              )}
-            </View>
-          </ScrollView>
-        </SafeAreaView>
+    <View style={styles.floatingPopup}>
+      <View style={styles.popupHeaderRow}>
+        <View style={[styles.popupZoneIdCircle, { backgroundColor: statusColor }]}>
+          <Text style={styles.popupZoneIdText}>{selectedZone.id}</Text>
+        </View>
+        <View style={styles.popupHeaderTexts}>
+          <Text style={styles.popupZoneName}>{selectedZone.name.replace(/Zone \d+ [–-]\s*/, '')}</Text>
+          <Text style={styles.popupManager}>{selectedZone.manager}</Text>
+        </View>
       </View>
-    </Modal>
+      <View style={styles.popupDivider} />
+      
+      <View style={styles.popupStatRow}>
+        <Text style={styles.popupStatLabel}>Overall Status</Text>
+        <Text style={[styles.popupStatValue, { color: statusColor }]}>{selectedZone.status} — On Time</Text>
+      </View>
+      <View style={styles.popupStatRow}>
+        <Text style={styles.popupStatLabel}>Checklist</Text>
+        <Text style={styles.popupStatValue}>{selectedZone.checklistRatio || '0'} tasks done</Text>
+      </View>
+      <View style={styles.popupStatRow}>
+        <Text style={styles.popupStatLabel}>Last Submission</Text>
+        <Text style={styles.popupStatValue}>
+          {selectedZone.lastSub === 'None yet' ? 'None' : 
+            (typeof selectedZone.lastSub === 'string' && selectedZone.lastSub.includes(':') ? 
+             selectedZone.lastSub : new Date(selectedZone.lastSub).toLocaleDateString())}
+        </Text>
+      </View>
+      <View style={styles.popupStatRow}>
+        <Text style={styles.popupStatLabel}>Open Concerns</Text>
+        <Text style={styles.popupStatValue}>{selectedZone.openConcerns} complaint{selectedZone.openConcerns !== 1 ? 's' : ''}</Text>
+      </View>
+      <View style={styles.popupStatRow}>
+        <Text style={styles.popupStatLabel}>Zonal Review</Text>
+        <Text style={styles.popupStatValue}>Pending</Text>
+      </View>
+      
+      <Text style={styles.popupScoreLabel}>Compliance Score: {selectedZone.score}%</Text>
+      <View style={styles.popupScoreBarBg}>
+        <View style={[styles.popupScoreBarFill, { width: `${selectedZone.score}%`, backgroundColor: statusColor }]} />
+      </View>
+    </View>
   );
 };
 
@@ -279,55 +185,6 @@ export default function AdminHome() {
         <Text style={styles.pageSubtitle}>University Compliance Overview</Text>
       </View>
 
-      {/* Maroon Banner */}
-      <View style={styles.bannerCard}>
-        <View style={styles.circleProgress}>
-          <Text style={styles.circleText}>{overallCompliance}%</Text>
-        </View>
-        <View style={styles.bannerContent}>
-          <Text style={styles.bannerTitle}>Overall Compliance</Text>
-          <View style={styles.statusPill}>
-            <Text style={styles.statusPillText}>{overallCompliance >= 85 ? 'Excellent' : overallCompliance >= 60 ? 'Good' : 'Needs Work'}</Text>
-          </View>
-          <View style={styles.trendRow}>
-            <Ionicons name="arrow-up" size={16} color="#1A8C4E" />
-            <Text style={styles.trendText}> 6% from last month</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* 4 White Summary Cards */}
-      <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
-          <View style={[styles.statIconBox, { backgroundColor: '#FF8800' }]}>
-            <Ionicons name="alert" size={24} color="#FFF" />
-          </View>
-          <Text style={[styles.statNumber, { color: '#D97706' }]}>{totalComplaints}</Text>
-          <Text style={styles.statLabel}>Total{'\n'}Complaints</Text>
-        </View>
-        <View style={styles.statCard}>
-          <View style={[styles.statIconBox, { backgroundColor: '#8C1B2F' }]}>
-            <Ionicons name="alert-circle" size={24} color="#FFF" />
-          </View>
-          <Text style={[styles.statNumber, { color: '#8C1B2F' }]}>{pendingComplaints}</Text>
-          <Text style={styles.statLabel}>Pending{'\n'}Complaints</Text>
-        </View>
-        <View style={styles.statCard}>
-          <View style={[styles.statIconBox, { backgroundColor: '#1A8C4E' }]}>
-            <Ionicons name="checkmark-circle" size={24} color="#FFF" />
-          </View>
-          <Text style={[styles.statNumber, { color: '#1A8C4E' }]}>{resolvedComplaints}</Text>
-          <Text style={styles.statLabel}>Resolved{'\n'}this month</Text>
-        </View>
-        <View style={styles.statCard}>
-          <View style={[styles.statIconBox, { backgroundColor: '#6D28D9' }]}>
-            <Ionicons name="megaphone" size={24} color="#FFF" />
-          </View>
-          <Text style={[styles.statNumber, { color: '#6D28D9' }]}>{activeAdvisories}</Text>
-          <Text style={styles.statLabel}>Active{'\n'}Advisories</Text>
-        </View>
-      </View>
-
       <View style={styles.mapCard}>
         <View style={styles.mapCardHeader}>
           <Text style={styles.mapCardTitle}>Live Campus Zone Map — Annexure I</Text>
@@ -378,14 +235,9 @@ export default function AdminHome() {
         </View>
       </View>
 
-      {selectedZone && (
-        <ZoneDetailModal 
-          selectedZone={selectedZone} 
-          close={() => setSelectedZone(null)} 
-          db={db}
-          staticData={staticData}
-        />
-      )}
+        {selectedZone && (
+          <FloatingZonePopup selectedZone={selectedZone} />
+        )}
     </ScrollView>
     </SafeAreaView>
   );

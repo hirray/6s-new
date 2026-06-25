@@ -197,8 +197,13 @@ export default function LoginScreen() {
         setErrorText('Invalid password.');
       }
     } else if ((id === 'subzone' || id === 'subzone@gsfc.edu') && pass === 'subzone') {
-      // Fallback for the old test subzonal head
-      login({ role: 'SubZonalHead', id: 'SZH_F1', name: 'Mr. Rajesh Patel' });
+      // Fallback for the test subzonal head mapped to All Labs for demo purposes
+      login({ 
+        role: 'SubZonalHead', 
+        id: 'amit.singh@gsfcuniversity.ac.in', 
+        name: 'Dr. Amit Singh',
+        data: { id: 'amit.singh@gsfcuniversity.ac.in', name: 'Dr. Amit Singh', zone: 'Zone 2', subZone: '1', areasCovered: 'All Labs' }
+      });
     } else if (id === '24bt04d224@gsfcuniversity.ac.in') {
       login({ role: 'Student', id: 'STU_1', name: 'Hirra' });
     } else if (ZONAL_HEADS.some(head => head.email === id)) {
@@ -438,19 +443,20 @@ const styles = StyleSheet.create({
   },
   welcomeContainer: {
     marginBottom: 20,
+    alignItems: 'center',
   },
   titleText: {
     fontSize: 22,
     fontWeight: 'bold',
     color: '#222222',
-    marginBottom: 10,
+    marginBottom: 15,
     textAlign: 'center',
   },
   welcomeText: {
     fontSize: 22,
     fontWeight: 'bold',
     color: '#222222',
-    textAlign: 'left',
+    textAlign: 'center',
   },
   cardContainer: {
     width: '100%',

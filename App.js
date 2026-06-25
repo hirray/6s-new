@@ -38,7 +38,7 @@ function MainNavigator() {
   if (currentUser.role === 'ZonalHead') {
     return (
       <NavigationContainer>
-        <ZonalMain />
+        <ZonalDashboard />
       </NavigationContainer>
     );
   }
