@@ -1,10 +1,12 @@
 import React, { useContext } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AdminAnalytics() {
   const { db, zones } = useContext(DataContext);
+  const insets = useSafeAreaInsets();
 
   let overallScore = 0;
   if (db.checklistSubmissions.length > 0) {
@@ -36,15 +38,59 @@ export default function AdminAnalytics() {
     { name: 'No Data', score: 0 }
   ];
 
+  const getTrendData = () => {
+    const data = [];
+    const today = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i * 6); // approx 30 days total
+      
+      const start = new Date(d);
+      start.setHours(0,0,0,0);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 5);
+      end.setHours(23,59,59,999);
+      
+      const subsInPeriod = db.checklistSubmissions.filter(s => {
+        const sd = new Date(s.date);
+        return sd >= start && sd <= end;
+      });
+      
+      let score = 0;
+      if (subsInPeriod.length > 0) {
+        score = Math.round(subsInPeriod.reduce((acc, sub) => acc + sub.score, 0) / subsInPeriod.length);
+      } else if (i < 5 && data.length > 0) {
+        // Carry over previous score if no data to make chart look continuous instead of dropping to 0
+        score = data[data.length - 1].score;
+      }
+      
+      data.push({
+        label: i === 0 ? 'Today' : (i === 5 ? '30d ago' : d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })),
+        score: score
+      });
+    }
+    return data;
+  };
+  const trendData = getTrendData();
+  const pendingComplaints = db.complaints.filter(c => c.status === 'Pending').length;
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <TouchableOpacity>
             <Ionicons name="arrow-back" size={24} color="#8C1B2F" />
           </TouchableOpacity>
           <Text style={styles.title}>Analytics</Text>
-          <Ionicons name="notifications-outline" size={24} color="#8C1B2F" />
+          <TouchableOpacity style={{ position: 'relative' }}>
+            <Ionicons name="notifications-outline" size={24} color="#8C1B2F" />
+            {pendingComplaints > 0 && (
+              <View style={{ position: 'absolute', right: -4, top: -4, backgroundColor: '#EF4444', width: 14, height: 14, borderRadius: 7, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ color: '#FFF', fontSize: 8, fontWeight: 'bold' }}>{pendingComplaints}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -58,20 +104,14 @@ export default function AdminAnalytics() {
         
         <View style={styles.chartContainer}>
            <View style={styles.chartArea}>
-             <View style={[styles.chartBar, { height: '62%' }]} />
-             <View style={[styles.chartBar, { height: '70%' }]} />
-             <View style={[styles.chartBar, { height: '72%' }]} />
-             <View style={[styles.chartBar, { height: '80%' }]} />
-             <View style={[styles.chartBar, { height: `${Math.min(100, Math.max(10, overallScore - 5))}%` }]} />
-             <View style={[styles.chartBar, { height: `${Math.max(10, overallScore)}%` }]} />
+             {trendData.map((d, i) => (
+               <View key={i} style={[styles.chartBar, { height: `${Math.max(2, d.score)}%` }]} />
+             ))}
            </View>
            <View style={styles.chartLabels}>
-             <Text style={styles.chartLabelText}>20 May</Text>
-             <Text style={styles.chartLabelText}></Text>
-             <Text style={styles.chartLabelText}>27 May</Text>
-             <Text style={styles.chartLabelText}>3 Jun</Text>
-             <Text style={styles.chartLabelText}>10 Jun</Text>
-             <Text style={styles.chartLabelText}>Today</Text>
+             {trendData.map((d, i) => (
+               <Text key={i} style={styles.chartLabelText}>{d.label}</Text>
+             ))}
            </View>
         </View>
       </View>
@@ -101,6 +141,7 @@ export default function AdminAnalytics() {
         <PerformanceRow name="Safety (Safety)" score={overallScore > 0 ? Math.min(100, overallScore + 1) : 0} />
       </View>
     </ScrollView>
+    </View>
   );
 }
 

@@ -1,8 +1,10 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, ImageBackground, TouchableOpacity, Modal, TouchableWithoutFeedback, ScrollView, Animated, Easing, Dimensions, SafeAreaView, TextInput, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { StyleSheet, Text, View, ImageBackground, TouchableOpacity, Modal, TouchableWithoutFeedback, ScrollView, Animated, Easing, Dimensions, SafeAreaView, TextInput, LayoutAnimation, Platform, UIManager, Image } from 'react-native';
 import { ReactNativeZoomableView } from '@openspacelabs/react-native-zoomable-view';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ZONAL_HEADS } from '../../data/zonalHeads';
 
 const getMarkerColor = (status) => {
   switch(status) {
@@ -62,12 +64,15 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const FloatingZonePopup = ({ selectedZone }) => {
+const FloatingZonePopup = ({ selectedZone, onClose }) => {
   if (!selectedZone) return null;
   const statusColor = getMarkerColor(selectedZone.status);
   
   return (
     <View style={styles.floatingPopup}>
+      <TouchableOpacity style={{position: 'absolute', top: 12, right: 12, zIndex: 10}} onPress={onClose}>
+        <Ionicons name="close" size={24} color="#6B7280" />
+      </TouchableOpacity>
       <View style={styles.popupHeaderRow}>
         <View style={[styles.popupZoneIdCircle, { backgroundColor: statusColor }]}>
           <Text style={styles.popupZoneIdText}>{selectedZone.id}</Text>
@@ -112,13 +117,18 @@ const FloatingZonePopup = ({ selectedZone }) => {
   );
 };
 
-export default function AdminHome() {
+export default function AdminHome({ onNavigate }) {
   const { zones, db, staticData } = useContext(DataContext);
   const [selectedZone, setSelectedZone] = useState(null);
+  const insets = useSafeAreaInsets();
 
   // Compute live zone data from MongoDB db
   const liveZones = zones.map(z => {
-    const head = staticData?.zonalHeads?.find(h => h.zone === parseInt(z.id));
+    const headsSource = staticData?.zonalHeads?.length > 0 ? staticData.zonalHeads : ZONAL_HEADS;
+    const head = headsSource.find(h => {
+      const headZoneNum = h.zone ? String(h.zone).replace(/\D/g, '') : String(h.zoneNumber);
+      return headZoneNum === String(z.id);
+    });
     const manager = head ? head.name : 'Unassigned';
 
     const extractZoneNumber = (zoneStr) => {
@@ -143,6 +153,21 @@ export default function AdminHome() {
       avgScore = 0; // Nobody submitted
     }
 
+    let greenCount = 0;
+    let yellowCount = 0;
+    let redCount = 0;
+    
+    zoneSZHs.forEach(sz => {
+      const sub = db.checklistSubmissions
+        .filter(s => s.subZonalHeadId === sz.id)
+        .sort((a,b) => new Date(b.date) - new Date(a.date))[0];
+      
+      const subScore = sub ? sub.score : 0;
+      if (subScore >= 85) greenCount++;
+      else if (subScore >= 60) yellowCount++;
+      else redCount++;
+    });
+
     let score = Math.max(0, Math.round(avgScore - (zoneComplaints.length * 5)));
     let status = 'Green';
     if (score < 60) status = 'Red';
@@ -153,6 +178,9 @@ export default function AdminHome() {
       manager,
       status,
       score,
+      greenCount,
+      yellowCount,
+      redCount,
       openConcerns: zoneComplaints.length,
       lastSub: recentSubs.length > 0 ? recentSubs[0].date : 'None yet',
       checklistRatio: `${recentSubs.length}/${zoneSZHs.length}`
@@ -168,21 +196,32 @@ export default function AdminHome() {
   const activeAdvisories = db.advisories.length;
 
   return (
-    <SafeAreaView style={{flex: 1, backgroundColor: '#FAF9F6'}}>
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 30 }}>
-      {/* Top Header */}
-      <View style={styles.header}>
-        <TouchableOpacity>
-          <Ionicons name="menu" size={32} color="#6E2A36" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.notificationBtn}>
-          <Ionicons name="notifications-outline" size={28} color="#6E2A36" />
-          <View style={styles.badge}><Text style={styles.badgeText}>3</Text></View>
+    <View style={{flex: 1, backgroundColor: '#FAF9F6', paddingTop: insets.top}}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={{ paddingBottom: 30 }}
+      onScrollBeginDrag={() => {
+        if (selectedZone) setSelectedZone(null);
+      }}
+      scrollEventThrottle={16}
+    >
+      {/* Custom Maroon Header */}
+      <View style={styles.maroonHeader}>
+        <Text style={styles.maroonHeaderTitle}>Admin Dashboard</Text>
+        <TouchableOpacity onPress={() => onNavigate && onNavigate('Profile')}>
+          <Ionicons name="person-circle" size={32} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
-      <View style={styles.titleContainer}>
-        <Text style={styles.pageTitle}>Admin Dashboard</Text>
-        <Text style={styles.pageSubtitle}>University Compliance Overview</Text>
+
+      {/* Title and Illustration */}
+      <View style={styles.titleSection}>
+        <View style={styles.titleTextContainer}>
+          <Text style={styles.pageTitle}>Admin Dashboard</Text>
+          <Text style={styles.pageSubtitle}>University Compliance Overview</Text>
+        </View>
+        <View style={styles.illustrationContainer}>
+          <Image source={require('../../6S logo.jpeg')} style={[styles.illustration, { borderRadius: 60 }]} resizeMode="contain" />
+        </View>
       </View>
 
       <View style={styles.mapCard}>
@@ -217,7 +256,7 @@ export default function AdminHome() {
           </ReactNativeZoomableView>
           
           {selectedZone && (
-            <FloatingZonePopup selectedZone={selectedZone} />
+            <FloatingZonePopup selectedZone={selectedZone} onClose={() => setSelectedZone(null)} />
           )}
         </View>
 
@@ -238,18 +277,45 @@ export default function AdminHome() {
           </View>
         </View>
       </View>
+      
+      {/* Zone-wise Details Table */}
+      <View style={styles.tableCard}>
+        <Text style={styles.tableTitle}>Zone-wise Details</Text>
+        <View style={styles.tableHeaderRow}>
+          <Text style={[styles.thText, {flex: 3.5}]}>Zone</Text>
+          <Text style={[styles.thText, {flex: 3.5}]}>Zonal Head</Text>
+          <Text style={[styles.thText, {flex: 2, textAlign: 'right'}]}>Compliance</Text>
+        </View>
+
+        {liveZones.map((z, i) => (
+          <View key={z.id} style={[styles.tableRow, i === liveZones.length - 1 && { borderBottomWidth: 0 }]}>
+            <View style={{flex: 3.5, paddingRight: 12, justifyContent: 'center'}}>
+              <Text style={styles.tdZoneName}>{z.name.split(/[-–]/)[1]?.trim() || z.name}</Text>
+              <Text style={styles.tdZoneId}>Zone {z.id}</Text>
+            </View>
+            <View style={{flex: 3.5, paddingRight: 10, justifyContent: 'center'}}>
+              <Text style={styles.tdText}>{z.manager}</Text>
+            </View>
+            
+            <View style={{flex: 2, justifyContent: 'center'}}>
+              <Text style={[styles.tdScore, {textAlign: 'right', color: getMarkerColor(z.status)}]}>{z.score.toFixed(1)}%</Text>
+            </View>
+          </View>
+        ))}
+      </View>
     </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAF9F6' },
   header: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 5 },
-  notificationBtn: { position: 'relative' },
-  badge: { position: 'absolute', right: -4, top: -4, backgroundColor: '#EF4444', width: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FAF9F6' },
-  badgeText: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
-  titleContainer: { paddingHorizontal: 20, marginBottom: 15 },
+  logo: { height: 50, width: 160 },
+  titleSection: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 },
+  titleTextContainer: { flex: 1, paddingRight: 10, zIndex: 2 },
+  illustrationContainer: { width: 140, height: 140, backgroundColor: '#FFFFFF', borderRadius: 70, justifyContent: 'center', alignItems: 'center', zIndex: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
+  illustration: { width: 120, height: 120 },
   pageTitle: { fontSize: 28, fontWeight: '900', color: '#6E2A36', letterSpacing: -0.5 },
   pageSubtitle: { fontSize: 15, color: '#6B7280', marginTop: 2 },
   
@@ -283,24 +349,52 @@ const styles = StyleSheet.create({
   legendRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   legendDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
   legendText: { fontSize: 14, color: '#374151' },
-  markerWrapper: { position: 'absolute', width: 60, height: 60, alignItems: 'center', justifyContent: 'center', marginLeft: -30, marginTop: -30 }, // Center based on top/left
-  markerRing: { position: 'absolute', width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderStyle: 'dashed', borderColor: 'rgba(192, 24, 42, 0.8)', backgroundColor: 'rgba(192, 24, 42, 0.2)' },
-  markerCircle: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.8, shadowRadius: 4, elevation: 5 },
-  markerText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
+  markerWrapper: { position: 'absolute', width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -22, marginTop: -22 }, // Center based on top/left
+  markerRing: { position: 'absolute', width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(192, 24, 42, 0.8)', backgroundColor: 'rgba(192, 24, 42, 0.2)' },
+  markerCircle: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.8, shadowRadius: 2, elevation: 3 },
+  markerText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 11 },
   
   // Floating Popup Styles
-  floatingPopup: { position: 'absolute', top: 16, right: 16, width: 280, backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10, borderWidth: 1, borderColor: '#E5E7EB', zIndex: 100 },
-  popupHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  popupZoneIdCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  popupZoneIdText: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
-  popupHeaderTexts: { flex: 1 },
-  popupZoneName: { fontSize: 16, fontWeight: 'bold', color: '#111827' },
-  popupManager: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  popupDivider: { height: 1, backgroundColor: '#F3F4F6', marginBottom: 16 },
-  popupStatRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  popupStatLabel: { fontSize: 13, color: '#6B7280' },
-  popupStatValue: { fontSize: 13, color: '#111827', fontWeight: '600' },
-  popupScoreLabel: { fontSize: 12, color: '#6B7280', marginTop: 12, marginBottom: 8 },
+  floatingPopup: { position: 'absolute', top: 8, right: 8, width: 240, backgroundColor: '#FFFFFF', borderRadius: 10, padding: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 10, borderWidth: 1, borderColor: '#E5E7EB', zIndex: 100 },
+  popupHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  popupZoneIdCircle: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
+  popupZoneIdText: { color: '#FFF', fontSize: 12, fontWeight: 'bold' },
+  popupHeaderTexts: { flex: 1, paddingRight: 20 },
+  popupZoneName: { fontSize: 13, fontWeight: 'bold', color: '#111827' },
+  popupManager: { fontSize: 10, color: '#6B7280', marginTop: 1 },
+  popupDivider: { height: 1, backgroundColor: '#F3F4F6', marginBottom: 6 },
+  popupStatRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  popupStatLabel: { fontSize: 10, color: '#6B7280' },
+  popupStatValue: { fontSize: 10, color: '#111827', fontWeight: '600' },
+  popupScoreLabel: { fontSize: 10, color: '#6B7280', marginTop: 6, marginBottom: 4 },
   popupScoreBarBg: { height: 6, backgroundColor: '#F3F4F6', borderRadius: 3, overflow: 'hidden' },
   popupScoreBarFill: { height: '100%', borderRadius: 3 },
+  
+  // Table Styles
+  tableCard: { backgroundColor: '#FFFFFF', margin: 16, marginTop: 0, borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3, borderWidth: 1, borderColor: '#E5E7EB' },
+  tableTitle: { fontSize: 18, fontWeight: 'bold', color: '#111827', marginBottom: 16 },
+  tableHeaderRow: { flexDirection: 'row', paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#E5E7EB', marginBottom: 10 },
+  thText: { fontSize: 12, fontWeight: 'bold', color: '#374151' },
+  tableRow: { flexDirection: 'row', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', alignItems: 'center' },
+  tdZoneName: { fontSize: 13, fontWeight: 'bold', color: '#111827' },
+  tdZoneId: { fontSize: 11, color: '#6B7280', marginTop: 2 },
+  tdText: { fontSize: 12, color: '#4B5563' },
+  countCircle: { width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  tdScore: { fontSize: 13, fontWeight: 'bold', textAlign: 'right' },
+  maroonHeader: {
+    backgroundColor: '#8C1B2F',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomLeftRadius: 15,
+    borderBottomRightRadius: 15,
+    marginBottom: 20
+  },
+  maroonHeaderTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+  }
 });

@@ -14,12 +14,12 @@ export default function AdminMain() {
 
   const renderContent = () => {
     switch(activeTab) {
-      case 'Home': return <AdminHome />;
+      case 'Home': return <AdminHome onNavigate={setActiveTab} />;
       case 'Zones': return <AdminZones />;
       case 'Advisory': return <AdminAdvisories />;
       case 'Analytics': return <AdminAnalytics />;
       case 'Profile': return <AdminProfile />;
-      default: return <AdminHome />;
+      default: return <AdminHome onNavigate={setActiveTab} />;
     }
   };
 
@@ -34,8 +34,7 @@ export default function AdminMain() {
           { key: 'Home', icon: 'home-outline', activeIcon: 'home', label: 'Home' },
           { key: 'Zones', icon: 'business-outline', activeIcon: 'business', label: 'Zones' },
           { key: 'Advisory', icon: 'document-text-outline', activeIcon: 'document-text', label: 'Advisory' },
-          { key: 'Analytics', icon: 'bar-chart-outline', activeIcon: 'bar-chart', label: 'Analytics' },
-          { key: 'Profile', icon: 'person-outline', activeIcon: 'person', label: 'Profile' }
+          { key: 'Analytics', icon: 'bar-chart-outline', activeIcon: 'bar-chart', label: 'Analytics' }
         ]}
         activeTab={activeTab}
         onTabPress={setActiveTab}

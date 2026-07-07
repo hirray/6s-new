@@ -2,6 +2,10 @@ import React, { useState, useContext } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
+import * as Print from 'expo-print';
+import { shareAsync } from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+import * as XLSX from 'xlsx';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -65,6 +69,130 @@ export default function AdminZones() {
   });
 
   const filteredZones = ZONES_DATA.filter(z => z.name.toLowerCase().includes(searchQuery.toLowerCase()) || z.subZones.some(s => s.name.toLowerCase().includes(searchQuery.toLowerCase())));
+
+  const exportPdf = async (zone) => {
+    try {
+      const htmlContent = `
+        <html>
+          <head>
+            <style>
+              body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #333; font-size: 14px; }
+              h2 { color: #111827; margin-top: 30px; margin-bottom: 15px; font-size: 18px; }
+              table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+              th, td { border: 1px solid #E5E7EB; padding: 12px; text-align: left; }
+              th { background-color: #4338CA; color: #FFFFFF; font-weight: bold; }
+              .score { text-align: right; }
+            </style>
+          </head>
+          <body>
+            <h2>Summary</h2>
+            <table>
+              <tr>
+                <th>Zone Name</th>
+                <th>Zonal Head</th>
+                <th>Total Sub-Zones</th>
+                <th>Generated On</th>
+              </tr>
+              <tr>
+                <td>${zone.name}</td>
+                <td>${zone.headName}</td>
+                <td>${zone.subZones.length}</td>
+                <td>${new Date().toLocaleDateString()}</td>
+              </tr>
+            </table>
+            
+            <h2>Sub-Zone Compliance</h2>
+            <table>
+              <tr>
+                <th>Sub-Zone</th>
+                <th>Manager</th>
+                <th>Total Concerns</th>
+                <th>Compliance %</th>
+              </tr>
+              ${zone.subZones.map(sub => `
+                <tr>
+                  <td>${sub.name}</td>
+                  <td>${sub.headName}</td>
+                  <td>${sub.concerns}</td>
+                  <td class="score">${sub.compliance.toFixed(1)}%</td>
+                </tr>
+              `).join('')}
+            </table>
+            
+            <h2>Detailed Sub-Zone 6S Reviews & Concerns</h2>
+            <table>
+              <tr>
+                <th>Sub-Zone</th>
+                <th>Manager</th>
+                <th>6S Breakdown</th>
+                <th>Active Concerns</th>
+              </tr>
+              ${zone.subZones.map(sub => {
+                const breakdown = ['1S', '2S', '3S', '4S', '5S', '6S'].map(principle => {
+                  const score = sub.latestSub?.scores ? (sub.latestSub.scores[principle] || 0) : 0;
+                  return `${principle}: ${score}%`;
+                }).join('<br/>');
+                
+                return `
+                  <tr>
+                    <td>${sub.name}</td>
+                    <td>${sub.headName}</td>
+                    <td>${breakdown}</td>
+                    <td>${sub.pending > 0 ? `${sub.pending} pending` : 'None'}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </table>
+          </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to generate PDF report.');
+    }
+  };
+
+  const exportExcel = async (zone) => {
+    try {
+      const overviewData = zone.subZones.map(sub => ({
+        'Sub-Zone': sub.name,
+        'Manager': sub.headName,
+        'Total Concerns': sub.concerns,
+        'Pending Concerns': sub.pending,
+        'Resolved Concerns': sub.resolved,
+        'Compliance Score (%)': sub.compliance,
+        '1S Score': sub.latestSub?.scores?.['1S'] || 0,
+        '2S Score': sub.latestSub?.scores?.['2S'] || 0,
+        '3S Score': sub.latestSub?.scores?.['3S'] || 0,
+        '4S Score': sub.latestSub?.scores?.['4S'] || 0,
+        '5S Score': sub.latestSub?.scores?.['5S'] || 0,
+        '6S Score': sub.latestSub?.scores?.['6S'] || 0,
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(overviewData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Zone Report");
+
+      const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+      const uri = FileSystem.cacheDirectory + `${zone.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_report.xlsx`;
+      
+      await FileSystem.writeAsStringAsync(uri, wbout, {
+        encoding: FileSystem.EncodingType.Base64
+      });
+      
+      await shareAsync(uri, {
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        dialogTitle: 'Share Excel Report',
+        UTI: 'com.microsoft.excel.xls'
+      });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to generate Excel report.');
+    }
+  };
 
   const toggleZone = (id) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -157,13 +285,7 @@ export default function AdminZones() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity>
-          <Ionicons name="arrow-back" size={24} color="#8C1B2F" />
-        </TouchableOpacity>
         <Text style={styles.title}>Concerns</Text>
-        <TouchableOpacity>
-          <Ionicons name="filter" size={24} color="#8C1B2F" />
-        </TouchableOpacity>
       </View>
 
       <View style={styles.searchContainer}>
@@ -191,11 +313,22 @@ export default function AdminZones() {
 
               {isExpanded && (
                 <View style={styles.accordionBody}>
+                  <View style={styles.exportBar}>
+                    <Text style={styles.exportLabel}>Export:</Text>
+                    <TouchableOpacity style={styles.exportBtnPdf} onPress={() => exportPdf(zone)}>
+                      <Ionicons name="document-text" size={16} color="#FFF" />
+                      <Text style={styles.exportBtnText}>PDF Report</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.exportBtnExcel} onPress={() => exportExcel(zone)}>
+                      <Ionicons name="grid" size={16} color="#FFF" />
+                      <Text style={styles.exportBtnText}>Excel Report</Text>
+                    </TouchableOpacity>
+                  </View>
+
                   <View style={styles.tableHeaderRow}>
                     <Text style={styles.thEmpty}></Text>
-                    <Text style={styles.th}>Concerns</Text>
-                    <Text style={styles.th}>Pendings</Text>
-                    <Text style={styles.th}>Resolved</Text>
+                    <Text style={[styles.th, {flex: 1.5}]}>Concerns</Text>
+                    <Text style={[styles.th, {flex: 2}]}>Compliance Score</Text>
                     <Text style={styles.thIcon}></Text>
                   </View>
 
@@ -210,9 +343,8 @@ export default function AdminZones() {
                           onPress={() => toggleSubZone(sub.id)}
                         >
                           <Text style={styles.tdLabel} numberOfLines={2}>{sub.name}</Text>
-                          <Text style={[styles.tdValue, {color: compColor, fontWeight: 'bold'}]}>{sub.compliance}%</Text>
-                          <Text style={[styles.tdValue, {color: '#F59E0B', fontWeight: 'bold'}]}>{sub.pending}</Text>
-                          <Text style={[styles.tdValue, {color: '#10B981', fontWeight: 'bold'}]}>{sub.resolved}</Text>
+                          <Text style={[styles.tdValue, {color: '#8C1B2F', fontWeight: 'bold', flex: 1.5}]}>{sub.concerns}</Text>
+                          <Text style={[styles.tdValue, {color: compColor, fontWeight: 'bold', flex: 2}]}>{sub.compliance}%</Text>
                           <Ionicons name={isSubExpanded ? "chevron-up" : "chevron-forward"} size={16} color="#111827" />
                         </TouchableOpacity>
 
@@ -237,8 +369,8 @@ export default function AdminZones() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAF8' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 50, paddingBottom: 20 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#8C1B2F' },
+  header: { marginBottom: 20, paddingHorizontal: 20, paddingTop: 50 },
+  title: { fontSize: 28, fontWeight: 'bold', color: '#8C1B2F' },
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', marginHorizontal: 20, paddingHorizontal: 16, height: 50, borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, marginBottom: 20, borderWidth: 1, borderColor: '#F3F4F6' },
   searchIcon: { marginRight: 10 },
   searchInput: { flex: 1, fontSize: 16, color: '#111827' },
@@ -250,6 +382,11 @@ const styles = StyleSheet.create({
   accordionBody: { paddingHorizontal: 16, paddingBottom: 16 },
   tableHeaderRow: { flexDirection: 'row', marginBottom: 12 },
   thEmpty: { flex: 1 },
+  exportBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, paddingHorizontal: 5 },
+  exportLabel: { fontSize: 14, fontWeight: 'bold', color: '#4B5563', marginRight: 10 },
+  exportBtnPdf: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E11D48', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, marginRight: 10 },
+  exportBtnExcel: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#059669', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+  exportBtnText: { color: '#FFF', fontSize: 13, fontWeight: 'bold', marginLeft: 6 },
   th: { flex: 1, fontSize: 11, color: '#6B7280', textAlign: 'center' },
   thIcon: { width: 20 },
   subZoneWrapper: { borderTopWidth: 1, borderTopColor: '#F3F4F6' },

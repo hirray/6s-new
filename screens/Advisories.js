@@ -2,9 +2,10 @@ import React, { useState, useContext } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../context/DataContext';
+import { SUB_ZONAL_HEADS } from '../data/subZonalHeads';
 
 export default function Advisories() {
-  const { currentUser, db, publishAdvisory, addAdvisoryReply, SZH } = useContext(DataContext);
+  const { currentUser, db, publishAdvisory, addAdvisoryReply, SZH, zones, staticData } = useContext(DataContext);
   
   const [advisoryText, setAdvisoryText] = useState('');
   
@@ -18,13 +19,24 @@ export default function Advisories() {
   const [replyingToId, setReplyingToId] = useState(null);
 
   // Extract Zone Number for Sub-Zone filtering
-  const zoneMatch = selectedZone.match(/Zone (\d+)/);
+  const zoneMatch = selectedZone.match(/Zone\s*0?(\d+)/i);
   const zoneNumber = zoneMatch ? parseInt(zoneMatch[1], 10) : null;
 
   // Filter Sub-Zones based on selected zone
-  const availableSubZones = zoneNumber 
-    ? SZH.filter(s => s.zone === zoneNumber)
+  const sourceData = (staticData?.subZonalHeads?.length > 0) ? staticData.subZonalHeads : SUB_ZONAL_HEADS;
+  
+  const rawSubZones = zoneNumber 
+    ? sourceData.filter(s => {
+        const sZoneNum = s.zone ? String(s.zone).replace(/\D/g, '') : null;
+        return sZoneNum === String(zoneNumber);
+      })
     : [];
+    
+  const uniqueSubZoneNames = Array.from(new Set(rawSubZones.map(s => s.areasCovered || s.floor || s.subZone || 'Unknown Area')));
+  
+  const availableSubZones = uniqueSubZoneNames.map(name => ({ floor: name }));
+    
+  const dynamicZones = ['All Zones', ...zones.map(z => z.name)];
 
   const handlePublish = () => {
     if (!advisoryText.trim()) {
@@ -72,17 +84,7 @@ export default function Advisories() {
               <View style={styles.modalContent}>
                 <Text style={styles.modalHeader}>Select Target Zone</Text>
                 <ScrollView style={{ maxHeight: 300 }}>
-                  {[
-                    "All Zones",
-                    "Zone 1 – Anviksha",
-                    "Zone 2 – School of Technology",
-                    "Zone 3 – Common Amenities",
-                    "Zone 4 – Kasturba Bhavan",
-                    "Zone 5 – Vikram Sarabhai Bhavan",
-                    "Zone 6 – Swami Vivekananda Bhavan",
-                    "Zone 7 – FirePlex",
-                    "Zone 8 – School of Science / Management"
-                  ].map((zoneName, idx) => (
+                  {dynamicZones.map((zoneName, idx) => (
                     <TouchableOpacity 
                       key={idx} 
                       style={styles.modalItem} 
@@ -90,6 +92,9 @@ export default function Advisories() {
                         setSelectedZone(zoneName); 
                         setSelectedSubZone('All Sub-Zones'); // Reset SubZone
                         setShowPicker(false); 
+                        if (zoneName !== 'All Zones') {
+                          setTimeout(() => setShowSubPicker(true), 100);
+                        }
                       }}
                     >
                       <Text style={[styles.modalItemText, selectedZone === zoneName && styles.modalItemTextSelected]}>

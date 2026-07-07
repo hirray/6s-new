@@ -1,16 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { DataContext } from '../../context/DataContext';
+import { SUB_ZONAL_HEADS } from '../../data/subZonalHeads';
 
-const ZONES = ['All Zones', 'Zone 1 - Anviksha', 'Zone 2 - SOT', 'Zone 3 - Common Amenities', 'Zone 4 - Kasturba', 'Zone 5 - Vikram Sarabhai', 'Zone 6 - Swami Vivekananda', 'Zone 7 - FirePlex', 'Zone 8 - SOS'];
-const SUB_ZONES_MAP = {
-  'Zone 1 - Anviksha': ['All Sub-Zones', 'Ground Floor', 'First Floor', 'Second Floor', 'Third Floor', 'Basement', 'Terrace', 'Washrooms', 'Gardens'],
-  'Zone 2 - SOT': ['All Sub-Zones', 'Ground Floor', 'First Floor', 'Second Floor', 'IT Dept', 'Canteen', 'Gardens'],
-};
-// Provide a default fallback for zones not explicitly mapped
-const getSubZones = (zone) => SUB_ZONES_MAP[zone] || ['All Sub-Zones', 'Floor 1', 'Floor 2', 'Floor 3'];
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function AdminAdvisories() {
+  const { zones, staticData, SZH } = useContext(DataContext);
+  
+  const dynamicZones = ['All Zones', ...zones.map(z => z.name)];
+  
+  const getDynamicSubZones = (zoneName) => {
+    if (!zoneName || zoneName === 'All Zones') return ['All Sub-Zones'];
+    const zIdMatch = zoneName.match(/Zone\s*0?(\d+)/i);
+    const zId = zIdMatch ? parseInt(zIdMatch[1], 10) : null;
+    if (!zId) return ['All Sub-Zones', 'Floor 1', 'Floor 2'];
+    
+    const sourceData = (staticData?.subZonalHeads?.length > 0) ? staticData.subZonalHeads : SUB_ZONAL_HEADS;
+    const subHeads = sourceData.filter(s => {
+      const sZoneNum = s.zone ? String(s.zone).replace(/\D/g, '') : null;
+      return sZoneNum === String(zId);
+    });
+    
+    if (subHeads.length === 0) return ['All Sub-Zones'];
+    const uniqueAreas = Array.from(new Set(subHeads.map(s => s.areasCovered || s.floor || s.subZone || 'Unknown Area')));
+    return ['All Sub-Zones', ...uniqueAreas];
+  };
+  
   const [selectedZone, setSelectedZone] = useState('');
   const [selectedSubZone, setSelectedSubZone] = useState('');
   const [description, setDescription] = useState('');
@@ -23,6 +42,13 @@ export default function AdminAdvisories() {
     setSelectedZone(z);
     setShowZoneDropdown(false);
     setSelectedSubZone(''); // Reset dependent dropdown
+    
+    if (z && z !== 'All Zones') {
+      setTimeout(() => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setShowSubZoneDropdown(true);
+      }, 100);
+    }
   };
 
   const handlePublish = () => {
@@ -64,13 +90,13 @@ export default function AdminAdvisories() {
         </TouchableOpacity>
         
         {showZoneDropdown && (
-          <View style={styles.dropdownList}>
-            {ZONES.map((z, idx) => (
+          <ScrollView style={styles.dropdownList} nestedScrollEnabled={true}>
+            {dynamicZones.map((z, idx) => (
               <TouchableOpacity key={idx} style={styles.dropdownItem} onPress={() => handleZoneSelect(z)}>
                 <Text style={styles.dropdownItemText}>{z}</Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         )}
 
         {/* Sub-Zone Dropdown (Dependent) */}
@@ -85,13 +111,13 @@ export default function AdminAdvisories() {
             </TouchableOpacity>
 
             {showSubZoneDropdown && (
-              <View style={styles.dropdownList}>
-                {getSubZones(selectedZone).map((sz, idx) => (
+              <ScrollView style={styles.dropdownList} nestedScrollEnabled={true}>
+                {getDynamicSubZones(selectedZone).map((sz, idx) => (
                   <TouchableOpacity key={idx} style={styles.dropdownItem} onPress={() => { setSelectedSubZone(sz); setShowSubZoneDropdown(false); }}>
                     <Text style={styles.dropdownItemText}>{sz}</Text>
                   </TouchableOpacity>
                 ))}
-              </View>
+              </ScrollView>
             )}
           </View>
         )}
