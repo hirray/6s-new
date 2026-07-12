@@ -45,7 +45,7 @@ export default function FloatingNavBar({ tabs, activeTab, onTabPress }) {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 25 : 15,
+    bottom: Platform.OS === 'ios' ? 65 : 50,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',

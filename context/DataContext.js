@@ -1,7 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '../firebaseConfig';
 import { signOut } from 'firebase/auth';
 import axios from 'axios';
@@ -40,9 +39,6 @@ export const DataProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      if (Platform.OS !== 'web') {
-        await GoogleSignin.signOut();
-      }
       await signOut(auth);
     } catch (error) {
       console.log('Error during logout:', error);

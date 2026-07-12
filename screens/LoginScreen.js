@@ -2,9 +2,6 @@ import React, { useContext, useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Dimensions, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../context/DataContext';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { auth } from '../firebaseConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -27,78 +24,11 @@ export default function LoginScreen() {
   const buttonScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (Platform.OS !== 'web') {
-      GoogleSignin.configure({
-        webClientId: '659444199187-m32f5r56tsna27ch4dep1jg5sa7nuo2t.apps.googleusercontent.com',
-      });
-    }
+    // Google Sign-in disabled for testing on standard Expo Go
   }, []);
 
   const handleGoogleLogin = async () => {
-    try {
-      setErrorText('');
-      if (Platform.OS !== 'web') {
-        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-        
-        try {
-          await GoogleSignin.signOut();
-        } catch (e) {}
-      }
-
-      const userInfo = await GoogleSignin.signIn();
-      const idToken = userInfo.idToken || (userInfo.data && userInfo.data.idToken);
-      
-      if (!idToken) throw new Error('No ID token found');
-
-      const googleCredential = GoogleAuthProvider.credential(idToken);
-      const userCredential = await signInWithCredential(auth, googleCredential);
-      const user = userCredential.user;
-      const email = user.email.toLowerCase();
-
-      // Restrict domain
-      if (!email.endsWith('@gsfcuniversity.ac.in')) {
-        if (Platform.OS !== 'web') {
-          await GoogleSignin.signOut();
-        }
-        await auth.signOut();
-        setErrorText('Only @gsfcuniversity.ac.in emails are allowed.');
-        return;
-      }
-
-      const username = email.split('@')[0];
-
-      // Check for dual roles
-      const zonalHead = ZONAL_HEADS.find(h => h.email.toLowerCase() === email);
-      const subZonalHead = SUB_ZONAL_HEADS.find(h => h.email.toLowerCase() === email);
-
-      if (zonalHead) {
-        setPendingUser({ uid: username, name: user.displayName, email });
-        setPendingRole({ type: 'ZonalHead', data: zonalHead });
-        setActiveTab('roleSelection');
-      } else if (subZonalHead) {
-        setPendingUser({ uid: username, name: user.displayName, email });
-        setPendingRole({ type: 'SubZonalHead', data: subZonalHead });
-        setActiveTab('roleSelection');
-      } else {
-        // Just a student
-        login({ 
-          role: 'Student', 
-          id: username, 
-          name: user.displayName || username,
-          email: email
-        });
-      }
-      
-    } catch (error) {
-      console.error(error);
-      if (error.code === 'SIGN_IN_CANCELLED') {
-        // user cancelled
-      } else if (error.code === 'IN_PROGRESS') {
-        setErrorText('Sign in is in progress already');
-      } else {
-        setErrorText('Failed to sign in with Google');
-      }
-    }
+    setErrorText('Google login is disabled for Expo Go local testing.');
   };
 
   const handleRoleSelection = (roleType) => {
@@ -162,14 +92,14 @@ export default function LoginScreen() {
       login({ role: 'Admin', id: 'ADMIN_1', name: 'Core Committee' });
     } else if ((id === 'student' || id === 'student@gsfc.edu') && pass === 'student') {
       login({ role: 'Student', id: 'STU_1', name: 'Test Student' });
-    } else if (id === 'dulari.raj@gsfcuniversity.ac.in') {
+    } else if (id === 'dulari.raj@gsfcuniversity.ac.in' && (pass === '1234' || pass === '12334' || pass === '12345')) {
       login({ 
         role: 'SubZonalHead', 
         id, 
         name: 'Ms. Dulari Raj',
         data: { id, email: id, name: 'Ms. Dulari Raj', zone: 'Zone 1', subZone: '1', areasCovered: 'Main Entrance, Lobby, Reception, Admission' }
       });
-    } else if (id === 'devjani.banerjee@gsfcuniversity.ac.in') {
+    } else if (id === 'devjani.banerjee@gsfcuniversity.ac.in' && (pass === '1234' || pass === '12334' || pass === '12345')) {
       login({ 
         role: 'ZonalHead', 
         id, 
@@ -177,7 +107,7 @@ export default function LoginScreen() {
         data: { id, email: id, name: 'Dr. Devjani Banerjee', zoneNumber: '1', zone: 'Zone 1' }
       });
     } else if (SUB_ZONAL_HEADS.some(head => head.email === id)) {
-      if (pass === '12334') {
+      if (pass === '1234' || pass === '12334') {
         const subZonalHeadInfo = SUB_ZONAL_HEADS.find(head => head.email === id);
         
         if (id.endsWith('@gsfcuniversity.ac.in')) {
@@ -207,7 +137,7 @@ export default function LoginScreen() {
     } else if (id === '24bt04d224@gsfcuniversity.ac.in') {
       login({ role: 'Student', id: 'STU_1', name: 'Hirra' });
     } else if (ZONAL_HEADS.some(head => head.email === id)) {
-      if (pass === '12334') {
+      if (pass === '1234' || pass === '12334') {
         const zonalHeadInfo = ZONAL_HEADS.find(head => head.email === id);
         if (id.endsWith('@gsfcuniversity.ac.in')) {
           const username = id.split('@')[0];
@@ -239,7 +169,7 @@ export default function LoginScreen() {
         setErrorText('Invalid zone. Try zone1 through zone8.');
       }
     } else {
-      setErrorText('Invalid credentials. Try admin/admin, student/student, or your official email.');
+      setErrorText('Invalid credentials. Try admin/admin, student/student, or teacher email with 1234.');
     }
   };
 
@@ -291,29 +221,78 @@ export default function LoginScreen() {
 
                 {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
 
-                <Text style={{ textAlign: 'center', color: '#666', marginBottom: 20 }}>Select a role to login directly:</Text>
+                {/* Username Input */}
+                <TextInput
+                  style={styles.input}
+                  placeholder="Username / Email"
+                  placeholderTextColor="#999"
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                {/* Password Input */}
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder="Password"
+                    placeholderTextColor="#999"
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity 
+                    style={styles.eyeIcon} 
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons 
+                      name={showPassword ? "eye-off" : "eye"} 
+                      size={20} 
+                      color="#6E2A36" 
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Login Button */}
+                <TouchableOpacity
+                  style={[styles.input, { backgroundColor: '#6E2A36', borderColor: '#6E2A36', alignItems: 'center', marginTop: 10 }]}
+                  onPress={() => handleLogin()}
+                >
+                  <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>
+                    Login
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={styles.dividerContainer}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>Quick Dev Login</Text>
+                  <View style={styles.dividerLine} />
+                </View>
 
                 {/* Direct Logins */}
                 <View style={{ marginTop: 10 }}>
                   <TouchableOpacity 
-                    onPress={() => handleLogin('admin@gsfc.edu', 'admin')} 
-                    style={{ padding: 16, backgroundColor: '#EFEFEF', borderRadius: 8, marginBottom: 10 }}>
-                    <Text style={{ textAlign: 'center', color: '#333', fontSize: 14, fontWeight: 'bold' }}>Login: Admin</Text>
+                    onPress={() => handleLogin('admin', 'admin')} 
+                    style={{ padding: 12, backgroundColor: '#EFEFEF', borderRadius: 8, marginBottom: 8 }}>
+                    <Text style={{ textAlign: 'center', color: '#333', fontSize: 13, fontWeight: 'bold' }}>Quick: Admin</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    onPress={() => handleLogin('student@gsfc.edu', 'student')} 
-                    style={{ padding: 16, backgroundColor: '#EFEFEF', borderRadius: 8, marginBottom: 10 }}>
-                    <Text style={{ textAlign: 'center', color: '#333', fontSize: 14, fontWeight: 'bold' }}>Login: Student</Text>
+                    onPress={() => handleLogin('student', 'student')} 
+                    style={{ padding: 12, backgroundColor: '#EFEFEF', borderRadius: 8, marginBottom: 8 }}>
+                    <Text style={{ textAlign: 'center', color: '#333', fontSize: 13, fontWeight: 'bold' }}>Quick: Student</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    onPress={() => handleLogin('dulari.raj@gsfcuniversity.ac.in', '12334')} 
-                    style={{ padding: 16, backgroundColor: '#EFEFEF', borderRadius: 8, marginBottom: 10 }}>
-                    <Text style={{ textAlign: 'center', color: '#333', fontSize: 14, fontWeight: 'bold' }}>Login: Sub-Zonal (Dulari)</Text>
+                    onPress={() => handleLogin('dulari.raj@gsfcuniversity.ac.in', '1234')} 
+                    style={{ padding: 12, backgroundColor: '#EFEFEF', borderRadius: 8, marginBottom: 8 }}>
+                    <Text style={{ textAlign: 'center', color: '#333', fontSize: 13, fontWeight: 'bold' }}>Quick: Sub-Zonal (Dulari)</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    onPress={() => handleLogin('devjani.banerjee@gsfcuniversity.ac.in', '12334')} 
-                    style={{ padding: 16, backgroundColor: '#EFEFEF', borderRadius: 8 }}>
-                    <Text style={{ textAlign: 'center', color: '#333', fontSize: 14, fontWeight: 'bold' }}>Login: Zonal Head (Devjani)</Text>
+                    onPress={() => handleLogin('devjani.banerjee@gsfcuniversity.ac.in', '1234')} 
+                    style={{ padding: 12, backgroundColor: '#EFEFEF', borderRadius: 8 }}>
+                    <Text style={{ textAlign: 'center', color: '#333', fontSize: 13, fontWeight: 'bold' }}>Quick: Zonal Head (Devjani)</Text>
                   </TouchableOpacity>
                 </View>
 
