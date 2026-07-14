@@ -199,7 +199,7 @@ export default function AdminHome({ onNavigate }) {
     <View style={{flex: 1, backgroundColor: '#FAF9F6', paddingTop: insets.top}}>
     <ScrollView 
       style={styles.container} 
-      contentContainerStyle={{ paddingBottom: 30 }}
+      contentContainerStyle={{ paddingBottom: 100 }}
       onScrollBeginDrag={() => {
         if (selectedZone) setSelectedZone(null);
       }}

@@ -2,8 +2,7 @@ export const SUB_ZONAL_HEADS = [
   // Zone 1
   { id: 'dulari.raj@gsfcuniversity.ac.in', name: 'Ms. Dulari Raj', email: 'dulari.raj@gsfcuniversity.ac.in', zone: 'Zone 1', subZone: '1', areasCovered: 'Main Entrance, Lobby, Reception, Admission' },
   { id: 'anisha@gsfcuniversity.ac.in', name: 'Ms. Anisha', email: 'anisha@gsfcuniversity.ac.in', zone: 'Zone 1', subZone: '1', areasCovered: 'Admin Office, Conference Room' },
-  { id: 'narendra.patel@gsfcuniversity.ac.in', name: 'Mr. Narendra Patel', email: 'narendra.patel@gsfcuniversity.ac.in', zone: 'Zone 1', subZone: '1', areasCovered: 'FEHS Lab, PTC Lab, ATC Lab' },
-  { id: 'niyam.dave@gsfcuniversity.ac.in', name: 'Dr. Niyam Dave', email: 'niyam.dave@gsfcuniversity.ac.in', zone: 'Zone 1', subZone: '1', areasCovered: 'FEHS Lab, PTC Lab, ATC Lab' }, // Assuming both are for the same area based on table structure
+  { id: 'narendra_niyam', name: 'Mr. Narendra Patel & Dr. Niyam Dave', email: 'narendra.patel@gsfcuniversity.ac.in, niyam.dave@gsfcuniversity.ac.in', zone: 'Zone 1', subZone: '1', areasCovered: 'FEHS Lab, PTC Lab, ATC Lab' },
   { id: 'jitendra.singh@gsfcuniversity.ac.in', name: 'Mr. Jitendra Singh', email: 'jitendra.singh@gsfcuniversity.ac.in', zone: 'Zone 1', subZone: '1', areasCovered: 'Garden' },
   { id: 'deepti.davla@gsfcuniversity.ac.in', name: 'Ms. Deepti Davla', email: 'deepti.davla@gsfcuniversity.ac.in', zone: 'Zone 1', subZone: '2', areasCovered: 'Molecular Biology Lab' },
   { id: 'khusboo.patel@gsfcuniversity.ac.in', name: 'Dr. Khusboo Patel', email: 'khusboo.patel@gsfcuniversity.ac.in', zone: 'Zone 1', subZone: '2', areasCovered: 'All Chemistry Labs' },
@@ -39,7 +38,8 @@ export const SUB_ZONAL_HEADS = [
   { id: 'jay.jinger@gsfcuniversity.ac.in', name: 'Mr. Jay Jinger', email: 'jay.jinger@gsfcuniversity.ac.in', zone: 'Zone 3', subZone: '2', areasCovered: 'Hang Out Area' },
   { id: 'sachiyanka.srivastava@gsfcuniversity.ac.in', name: 'Ms. Sachiyanka Srivastava', email: 'sachiyanka.srivastava@gsfcuniversity.ac.in', zone: 'Zone 3', subZone: '3', areasCovered: 'Aanganva' },
   { id: 'priyanka.yadav@gsfcuniversity.ac.in', name: 'Ms. Priyanka Yadav', email: 'priyanka.yadav@gsfcuniversity.ac.in', zone: 'Zone 3', subZone: '3', areasCovered: 'Aanganva' },
-  { id: 'anisha.saji@gsfcuniversity.ac.in', name: 'Ms. Anisha Saji', email: 'anisha.saji@gsfcuniversity.ac.in', zone: 'Zone 3', subZone: '4', areasCovered: 'Sarjan' }, // Assuming 'dulari.raj' is already defined, using her original entry for her login, but Anisha Saji is added here. Let me check if emails must be unique. Yes, 'dulari.raj' is duplicated in the table as coordinator for different areas, but she'll login with her email and just have one 'areasCovered' or we can combine them. I will use her primary entry.
+  { id: 'dulari.raj_zone3@gsfcuniversity.ac.in', name: 'Ms. Dulari Raj', email: 'dulari.raj@gsfcuniversity.ac.in', zone: 'Zone 3', subZone: '4', areasCovered: 'Sarjan' },
+  { id: 'anisha.saji@gsfcuniversity.ac.in', name: 'Ms. Anisha Saji', email: 'anisha.saji@gsfcuniversity.ac.in', zone: 'Zone 3', subZone: '4', areasCovered: 'Sarjan' },
   { id: 'sabita.po@gsfcuniversity.ac.in', name: 'Ms. Sabita Po', email: 'sabita.po@gsfcuniversity.ac.in', zone: 'Zone 3', subZone: '5', areasCovered: 'Multi Purpose Court' },
   { id: 'dhruvi.gandy@gsfcuniversity.ac.in', name: 'Ms. Dhruvi Gandhi', email: 'dhruvi.gandy@gsfcuniversity.ac.in', zone: 'Zone 3', subZone: '5', areasCovered: 'Multi Purpose Court' },
 
@@ -53,9 +53,10 @@ export const SUB_ZONAL_HEADS = [
   // Zone 5
   { id: 'bhaumik.machi@gsfcuniversity.ac.in', name: 'Dr. Bhaumik Machi', email: 'bhaumik.machi@gsfcuniversity.ac.in', zone: 'Zone 5', subZone: '1', areasCovered: 'Ground Floor including parking and garden' },
   { id: 'mehul.chauhan@gsfcuniversity.ac.in', name: 'Mr. Mehul Chauhan', email: 'mehul.chauhan@gsfcuniversity.ac.in', zone: 'Zone 5', subZone: '2', areasCovered: 'First Floor' },
-  { id: 'jay.jingar@gsfcuniversity.ac.in', name: 'Mr. Jay Jingar', email: 'jay.jingar@gsfcuniversity.ac.in', zone: 'Zone 5', subZone: '3', areasCovered: 'Second Floor' }, // Note: jay.jinger was in Zone 3, jay.jingar here. Let's keep them separate as provided.
+  { id: 'jay.jingar@gsfcuniversity.ac.in', name: 'Mr. Jay Jingar', email: 'jay.jingar@gsfcuniversity.ac.in', zone: 'Zone 5', subZone: '3', areasCovered: 'Second Floor' },
 
   // Zone 6
+  { id: 'niyam.dave_zone6@gsfcuniversity.ac.in', name: 'Dr. Niyam Dave', email: 'niyam.dave@gsfcuniversity.ac.in', zone: 'Zone 6', subZone: '1', areasCovered: 'Ground Floor and outside open area' },
   { id: 'parin.kanaiya@gsfcuniversity.ac.in', name: 'Dr. Parin Kanaiya', email: 'parin.kanaiya@gsfcuniversity.ac.in', zone: 'Zone 6', subZone: '2', areasCovered: 'First Floor' },
   { id: 'chandra.has@gsfcuniversity.ac.in', name: 'Dr. Chandra Has', email: 'chandra.has@gsfcuniversity.ac.in', zone: 'Zone 6', subZone: '3', areasCovered: 'Second Floor' },
   { id: 'prasad.andhare@gsfcuniversity.ac.in', name: 'Dr. Prasad Andhare', email: 'prasad.andhare@gsfcuniversity.ac.in', zone: 'Zone 6', subZone: '4', areasCovered: 'Third Floor' },

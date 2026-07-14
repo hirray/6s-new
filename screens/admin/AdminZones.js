@@ -21,15 +21,18 @@ export default function AdminZones() {
   const ZONES_DATA = zones.map((z, index) => {
     const bgColors = ['#8C1B2F', '#1C75FF', '#00B94A', '#F59E0B', '#8C1B2F', '#1C75FF', '#00B94A', '#F59E0B'];
     
-    const zh = (staticData?.zonalHeads || []).find(h => h.zone.toString() === z.id.toString());
+    const zh = (staticData?.zonalHeads || []).find(h => {
+      const headZoneNum = h.zone ? String(h.zone).replace(/\D/g, '') : String(h.zoneNumber);
+      return headZoneNum === String(z.id);
+    });
 
     const subZones = (staticData?.subZonalHeads || []).filter(szh => {
       const szhZoneNum = szh.zone ? szh.zone.toString().replace(/\D/g, '') : '';
       return szhZoneNum === z.id.toString();
     }).map(szh => {
-      const szhFloor = szh.subZone || szh.floor || szh.areasCovered || 'Unknown Area';
+      const szhFloor = szh.areasCovered || szh.floor || szh.subZone || 'Unknown Area';
       const szhComplaints = db.complaints.filter(c => 
-        (c.subZone === szhFloor || c.subZone === szh.name)
+        (c.subZone === szhFloor || c.subZone === szh.name || c.subZone === szh.subZone)
       );
       const pending = szhComplaints.filter(c => c.status === 'Pending').length;
       const resolved = szhComplaints.filter(c => c.status === 'Resolved').length;
@@ -307,7 +310,10 @@ export default function AdminZones() {
                 <View style={[styles.zoneIconCircle, { backgroundColor: zone.bgColor }]}>
                   <Ionicons name={zone.icon} size={24} color="#FFFFFF" />
                 </View>
-                <Text style={styles.zoneName}>{zone.name}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.zoneName, { flex: 0 }]}>{zone.name}</Text>
+                  <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>Zonal Head: {zone.headName}</Text>
+                </View>
                 <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={24} color="#111827" />
               </TouchableOpacity>
 
@@ -326,9 +332,8 @@ export default function AdminZones() {
                   </View>
 
                   <View style={styles.tableHeaderRow}>
-                    <Text style={styles.thEmpty}></Text>
-                    <Text style={[styles.th, {flex: 1.5}]}>Concerns</Text>
-                    <Text style={[styles.th, {flex: 2}]}>Compliance Score</Text>
+                    <Text style={[styles.thEmpty, {flex: 2.5}]}></Text>
+                    <Text style={[styles.th, {flex: 1, textAlign: 'right', paddingRight: 10}]}>Compliance Score</Text>
                     <Text style={styles.thIcon}></Text>
                   </View>
 
@@ -342,9 +347,8 @@ export default function AdminZones() {
                           style={styles.tableRow}
                           onPress={() => toggleSubZone(sub.id)}
                         >
-                          <Text style={styles.tdLabel} numberOfLines={2}>{sub.name}</Text>
-                          <Text style={[styles.tdValue, {color: '#8C1B2F', fontWeight: 'bold', flex: 1.5}]}>{sub.concerns}</Text>
-                          <Text style={[styles.tdValue, {color: compColor, fontWeight: 'bold', flex: 2}]}>{sub.compliance}%</Text>
+                          <Text style={[styles.tdLabel, {flex: 2.5}]} numberOfLines={2}>{sub.name}</Text>
+                          <Text style={[styles.tdValue, {color: compColor, fontWeight: 'bold', flex: 1, textAlign: 'right', paddingRight: 10}]}>{sub.compliance}%</Text>
                           <Ionicons name={isSubExpanded ? "chevron-up" : "chevron-forward"} size={16} color="#111827" />
                         </TouchableOpacity>
 
