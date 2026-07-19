@@ -3,14 +3,18 @@ import { DataContext } from '../../context/DataContext';
 import ProfileLayout, { ProfileCard, ProfileRow } from '../../components/ProfileLayout';
 
 export default function SubZonalProfile() {
-  const { currentUser, logout } = useContext(DataContext);
+  const { currentUser, logout, updateProfile, avatars } = useContext(DataContext);
   const data = currentUser?.data;
+  const avatarUri = avatars[currentUser?.id];
 
   return (
     <ProfileLayout
       name={currentUser?.name}
+      email={data?.email || currentUser?.email}
       role="Sub-Zonal Head"
+      avatarUri={avatarUri}
       onLogout={logout}
+      onUpdateProfile={(newData) => updateProfile(currentUser?.role, currentUser?.id, newData)}
     >
       <ProfileCard title="Contact Info">
         <ProfileRow label="Email:" value={data?.email || currentUser?.email} />

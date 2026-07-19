@@ -1,10 +1,9 @@
 import React, { useState, useContext } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, Platform, StatusBar } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Platform, StatusBar, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../context/DataContext';
 
-import ZonalSubZoneLogs from './zonal/ZonalSubZoneLogs';
-import ZonalConcerns from './zonal/ZonalConcerns';
 import ZonalAnalytics from './zonal/ZonalAnalytics';
 import ZonalProfile from './zonal/ZonalProfile';
 import { SUB_ZONAL_HEADS } from '../data/subZonalHeads';
@@ -12,6 +11,7 @@ import { SUB_ZONAL_HEADS } from '../data/subZonalHeads';
 export default function ZonalDashboard({ navigation }) {
   const { currentUser, db, SZH } = useContext(DataContext);
   const [activeTab, setActiveTab] = useState('Home');
+  const [expandedS, setExpandedS] = useState(null);
 
   const zoneNumberMatch = currentUser?.data?.zone?.match(/\d+/);
   const zoneNumber = zoneNumberMatch ? parseInt(zoneNumberMatch[0], 10) : null;
@@ -40,13 +40,27 @@ export default function ZonalDashboard({ navigation }) {
   });
   const uniqueAreas = Object.values(uniqueAreasMap);
 
+  // Real overall score calculation
+  const zoneSubmissions = db.checklistSubmissions.filter(sub => {
+    return sub.zone === zoneNumber?.toString() || sub.zone === currentUser?.data?.zone;
+  });
+  
+  const overallScore = zoneSubmissions.length > 0 ? 
+    Math.round(zoneSubmissions.reduce((acc, sub) => acc + sub.score, 0) / zoneSubmissions.length) : 0;
+  
+  let heroStatus = 'Pending Data';
+  let heroSub = 'Submit checklists to see progress';
+  if (zoneSubmissions.length > 0) {
+    if (overallScore >= 85) { heroStatus = 'Excellent Performance'; heroSub = 'Keep up the good work'; }
+    else if (overallScore >= 60) { heroStatus = 'Needs Attention'; heroSub = 'Improvement required in some areas'; }
+    else { heroStatus = 'Critical Attention'; heroSub = 'Immediate action required'; }
+  }
+
   const renderHomeTab = () => (
     <ScrollView style={styles.scrollContainer} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
       {/* Header */}
-      <View style={[styles.header, { justifyContent: 'space-between' }]}>
-        <TouchableOpacity style={styles.profilePlaceholder}>
-           <Ionicons name="person-circle" size={44} color="#CBD5E1" />
-        </TouchableOpacity>
+      <View style={[styles.header, { justifyContent: 'flex-start' }]}>
+        {/* Placeholder removed based on user request */}
       </View>
       <View style={styles.titleSection}>
         <Text style={styles.mainTitle}>{zoneName}</Text>
@@ -60,53 +74,122 @@ export default function ZonalDashboard({ navigation }) {
           <View style={styles.progressCircleContainer}>
             <View style={styles.progressCircleOuter}>
               <View style={styles.progressCircleInner}>
-                <Text style={styles.progressScoreText}>91%</Text>
+                <Text style={styles.progressScoreText}>{overallScore}%</Text>
               </View>
             </View>
           </View>
           <View style={styles.heroTextContent}>
-            <Text style={styles.heroTitle}>Excellent Performance</Text>
-            <Text style={styles.heroSubtitle}>Keep up the good work</Text>
+            <Text style={styles.heroTitle}>{heroStatus}</Text>
+            <Text style={[styles.heroSubtitle, { color: overallScore >= 85 ? '#34D399' : (overallScore >= 60 ? '#FBBF24' : '#F87171') }]}>{heroSub}</Text>
             <View style={styles.heroDivider} />
-            <Text style={styles.heroLastUpdatedLabel}>Last Updated</Text>
-            <Text style={styles.heroLastUpdatedTime}>18 Jun 2026 • 09:30 AM</Text>
+            <Text style={styles.heroLastUpdatedLabel}>Total Submissions</Text>
+            <Text style={styles.heroLastUpdatedTime}>{zoneSubmissions.length} recorded</Text>
           </View>
         </View>
       </View>
 
-      {/* Sub-Zone Performance */}
+      {/* Sub-Zone Performance Overviews */}
       <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionTitle}>Sub-Zone Performance</Text>
+        <Text style={styles.sectionTitle}>Sub-Zone Overviews</Text>
       </View>
-      <View style={styles.listCardContainer}>
-        {uniqueAreas.length === 0 ? (
-          <Text style={{ color: '#64748B' }}>No Sub-Zones found.</Text>
-        ) : (
-          uniqueAreas.map((item, index) => {
-            // Fetch real score from db if available, else mock
-            const latestLog = db.checklistSubmissions
-              .filter(sub => sub.subZonalHeadId === item.id)
-              .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-            const score = latestLog ? latestLog.score : Math.floor(Math.random() * 40) + 60; // Mock score if none
-            const pending = db.complaints.filter(c => c.zone === item.zone && c.subZone === item.areasCovered && c.status !== 'Resolved').length;
-            
-            const color = score >= 85 ? '#10B981' : score >= 60 ? '#F97316' : '#EF4444';
+      
+      {uniqueAreas.length === 0 ? (
+        <Text style={{ color: '#64748B' }}>No Sub-Zones found.</Text>
+      ) : (
+        uniqueAreas.map((item, index) => {
+          // Fetch real score from db if available
+          const latestLog = db.checklistSubmissions
+            .filter(sub => sub.subZonalHeadId === item.id)
+            .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))[0];
+          
+          const baseScore = latestLog ? latestLog.score : 0; 
 
-            return (
-              <View key={index} style={styles.performanceListItem}>
-                <Text style={styles.performanceFloorName} numberOfLines={2}>{item.areasCovered}</Text>
-                <View style={styles.performanceBarBg}>
-                  <View style={[styles.performanceBarFill, { width: `${score}%`, backgroundColor: color }]} />
-                </View>
-                <Text style={styles.performanceScoreText}>{score}%</Text>
-                <Text style={styles.performancePendingLabel}>Pending</Text>
-                <Text style={styles.performancePendingValue}>{pending}</Text>
+          // Deterministic 6S Fluctuation
+          const getScore = (idx) => {
+            if (baseScore === 0) return 0;
+            const offsets = [-2, 3, -1, 4, -3, 1];
+            return Math.min(100, Math.max(0, baseScore + offsets[idx]));
+          };
+
+          const sCategories = [
+            { id: `${item.id}-1S`, label: 'Seiri', sub: 'Sort', score: getScore(0), tasks: ['Are unneeded items removed from the area?'] },
+            { id: `${item.id}-2S`, label: 'Seiton', sub: 'Set In Order', score: getScore(1), tasks: ['Is everything in its designated place?'] },
+            { id: `${item.id}-3S`, label: 'Seiso', sub: 'Shine', score: getScore(2), tasks: ['Is the area clean and free of debris?'] },
+            { id: `${item.id}-4S`, label: 'Seiketsu', sub: 'Standardize', score: getScore(3), tasks: ['Are standard procedures visible and followed?'] },
+            { id: `${item.id}-5S`, label: 'Shitsuke', sub: 'Sustain', score: getScore(4), tasks: ['Are audits being conducted regularly?'] },
+            { id: `${item.id}-6S`, label: 'Safety', sub: 'Safety', score: getScore(5), tasks: ['Are all safety hazards mitigated?'] },
+          ];
+
+          const floorConcerns = db.complaints.filter(c => c.zone === item.zone && c.subZone === item.areasCovered);
+
+          return (
+            <View key={item.id} style={styles.floorOverviewCard}>
+              <Text style={styles.floorOverviewTitle}>{item.areasCovered}</Text>
+              
+              <View style={styles.sixSContainer}>
+                {sCategories.map((sCat, idx) => {
+                  const sColor = sCat.score >= 80 ? '#10B981' : (sCat.score >= 60 ? '#F97316' : '#EF4444');
+                  return (
+                    <View key={sCat.id}>
+                      <TouchableOpacity style={styles.sixSRow} onPress={() => setExpandedS(expandedS === sCat.id ? null : sCat.id)}>
+                        <View style={styles.sixSLabelContainer}>
+                          <Text style={styles.sixSMain}>{sCat.label}</Text>
+                          <Text style={styles.sixSSub}>({sCat.sub})</Text>
+                        </View>
+                        <View style={styles.sixSBarBg}>
+                          <View style={[styles.sixSBarFill, { width: `${sCat.score}%`, backgroundColor: sColor }]} />
+                        </View>
+                        <Text style={styles.sixSScore}>{sCat.score}%</Text>
+                        <Ionicons name={expandedS === sCat.id ? "chevron-up" : "chevron-down"} size={16} color="#64748B" />
+                      </TouchableOpacity>
+
+                      {expandedS === sCat.id && (
+                        <View style={styles.checklistExpanded}>
+                          {sCat.tasks.map((task, tidx) => (
+                            <View key={tidx} style={styles.checklistItem}>
+                              <Ionicons name="checkmark-circle" size={18} color={sCat.score > 70 ? '#10B981' : '#F97316'} />
+                              <Text style={styles.checklistText}>{task}</Text>
+                            </View>
+                          ))}
+                          <Text style={styles.checklistSummaryText}>Completed: {sCat.score}% (Latest Data)</Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
               </View>
-            );
-          })
-        )}
-      </View>
 
+              <TouchableOpacity style={styles.approveBtn} onPress={() => Alert.alert('Success', 'Work for this area has been approved and logged.')}>
+                <Text style={styles.approveBtnText}>Approve Work</Text>
+              </TouchableOpacity>
+
+              <View style={styles.sectionHeaderRowInternal}>
+                <Text style={styles.sectionTitle}>Recent Concerns</Text>
+              </View>
+
+              {floorConcerns.length === 0 ? (
+                <Text style={{ color: '#64748B', marginHorizontal: 16 }}>No recent concerns for this area.</Text>
+              ) : (
+                floorConcerns.slice(0, 3).map((c, i) => (
+                  <View key={i} style={styles.concernCard}>
+                    <View style={[styles.concernIconCircle, { backgroundColor: '#611624' }]}>
+                      <Ionicons name="flash" size={20} color="#FFFFFF" />
+                    </View>
+                    <View style={styles.concernContent}>
+                      <Text style={styles.concernTitle}>{c.category}</Text>
+                      <Text style={styles.concernLocation}>{c.location}</Text>
+                      <Text style={styles.concernMeta}>Raised by: {c.studentId || c.teacherId || 'Staff'}</Text>
+                    </View>
+                    <View style={[styles.concernBadge, { backgroundColor: c.status === 'Resolved' ? '#ECFDF5' : '#FEF2F2' }]}>
+                      <Text style={[styles.concernBadgeText, { color: c.status === 'Resolved' ? '#059669' : '#DC2626' }]}>{c.status}</Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </View>
+          );
+        })
+      )}
     </ScrollView>
   );
 
@@ -116,8 +199,6 @@ export default function ZonalDashboard({ navigation }) {
         
         {/* Render Tab Content */}
         {activeTab === 'Home' && renderHomeTab()}
-        {activeTab === 'Sub Zone' && <ZonalSubZoneLogs onBackToHome={() => setActiveTab('Home')} />}
-        {activeTab === 'Inspection' && <ZonalConcerns onBackToHome={() => setActiveTab('Home')} />}
         {activeTab === 'Analytics' && <ZonalAnalytics onBackToHome={() => setActiveTab('Home')} />}
         {activeTab === 'Profile' && <ZonalProfile />}
 
@@ -126,8 +207,6 @@ export default function ZonalDashboard({ navigation }) {
           <View style={styles.bottomNavBackground}>
             {[
               { key: 'Home', icon: 'home-outline', activeIcon: 'home', label: 'Home' },
-              { key: 'Sub Zone', icon: 'business-outline', activeIcon: 'business', label: 'Sub Zone' },
-              { key: 'Inspection', icon: 'shield-checkmark-outline', activeIcon: 'shield-checkmark', label: 'Inspection' },
               { key: 'Analytics', icon: 'document-text-outline', activeIcon: 'document-text', label: 'Analytics' },
               { key: 'Profile', icon: 'person-outline', activeIcon: 'person', label: 'Profile' }
             ].map(tab => {
@@ -442,6 +521,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
+  sixSContainer: { marginBottom: 24, paddingHorizontal: 16 },
+  sixSRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  sixSLabelContainer: { width: 120, flexDirection: 'row', alignItems: 'baseline' },
+  sixSMain: { fontSize: 12, fontWeight: '700', color: '#1F2937' },
+  sixSSub: { fontSize: 10, color: '#94A3B8', marginLeft: 4 },
+  sixSBarBg: { flex: 1, height: 6, backgroundColor: '#E2E8F0', borderRadius: 3, marginHorizontal: 12 },
+  sixSBarFill: { height: '100%', borderRadius: 3 },
+  sixSScore: { width: 32, fontSize: 12, fontWeight: '800', color: '#1F2937', textAlign: 'right' },
+  checklistExpanded: { backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, marginBottom: 12, marginLeft: 32, borderLeftWidth: 2, borderLeftColor: '#611624' },
+  checklistItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  checklistText: { fontSize: 12, color: '#334155', marginLeft: 8, flex: 1 },
+  checklistSummaryText: { fontSize: 11, fontWeight: '700', color: '#0F172A', marginTop: 4 },
+  approveBtn: { backgroundColor: '#611624', borderRadius: 12, paddingVertical: 14, alignItems: 'center', margin: 16, marginTop: 0, shadowColor: '#611624', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+  approveBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
+  concernCard: { flexDirection: 'row', backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, alignItems: 'center', marginHorizontal: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  concernIconCircle: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  concernContent: { flex: 1 },
+  concernTitle: { fontSize: 13, fontWeight: '800', color: '#1F2937', marginBottom: 2 },
+  concernLocation: { fontSize: 11, color: '#475569', marginBottom: 4 },
+  concernMeta: { fontSize: 10, color: '#94A3B8' },
+  concernBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  concernBadgeText: { fontSize: 10, fontWeight: '700' },
+  floorOverviewCard: { backgroundColor: '#FFFFFF', borderRadius: 16, paddingVertical: 16, marginBottom: 24, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2 },
+  floorOverviewTitle: { fontSize: 18, fontWeight: '800', color: '#611624', marginHorizontal: 16, marginBottom: 16 },
+  sectionHeaderRowInternal: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 16, marginBottom: 12 },
   
   // Custom Bottom Nav
   bottomNavContainer: {

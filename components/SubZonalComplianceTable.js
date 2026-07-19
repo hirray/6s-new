@@ -1,5 +1,6 @@
 import React, { useState, useContext } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, SafeAreaView, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../context/DataContext';
 import { getChecklistForUser } from '../utils/checklistMapper';
@@ -14,7 +15,7 @@ const getStatusColor = (status) => {
 };
 
 export default function SubZonalComplianceTable() {
-  const { staticData } = useContext(DataContext);
+  const { staticData, db } = useContext(DataContext);
   const SZH = staticData?.subZonalHeads || [];
 
   const [selectedSubZone, setSelectedSubZone] = useState(null);
@@ -32,6 +33,13 @@ export default function SubZonalComplianceTable() {
     const checklistData = getChecklistForUser(selectedSubZone, staticData?.checklists || []);
     const categories = Object.keys(checklistData);
 
+    // Fetch the latest submission for this sub-zone head to get remarks
+    const latestSubmission = db.checklistSubmissions
+      .filter(sub => sub.subZonalHeadId === selectedSubZone.id || sub.subZonalHeadId === selectedSubZone.email)
+      .sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt))[0];
+
+    const remarks = latestSubmission?.remarks || [];
+
     return (
       <Modal visible={modalVisible} animationType="slide" transparent={false}>
         <SafeAreaView style={styles.modalSafeArea}>
@@ -47,6 +55,18 @@ export default function SubZonalComplianceTable() {
           </View>
           
           <ScrollView style={styles.modalScroll}>
+            {remarks.length > 0 && (
+              <View style={styles.remarksCard}>
+                <Text style={styles.remarksCardTitle}>Remarks from Latest Audit</Text>
+                {remarks.map((rem, idx) => (
+                  <View key={idx} style={styles.remarkItem}>
+                    <Text style={styles.remarkTask}>• {rem.task}</Text>
+                    <Text style={styles.remarkComment}>Reason: {rem.comment}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
             {categories.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="document-text-outline" size={60} color="#9CA3AF" />
@@ -282,6 +302,38 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#8C1B2F',
     marginBottom: 12,
+  },
+  remarksCard: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  remarksCardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#991B1B',
+    marginBottom: 8,
+  },
+  remarkItem: {
+    marginBottom: 10,
+    backgroundColor: '#FFFFFF',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA'
+  },
+  remarkTask: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#7F1D1D',
+    marginBottom: 4,
+  },
+  remarkComment: {
+    fontSize: 14,
+    color: '#991B1B',
   },
   criteriaRow: {
     flexDirection: 'row',

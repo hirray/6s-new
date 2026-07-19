@@ -1,8 +1,8 @@
 import React, { useContext } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AdminAnalytics({ onNavigate }) {
   const { db, zones } = useContext(DataContext);
@@ -186,6 +186,32 @@ export default function AdminAnalytics({ onNavigate }) {
             )}
           </View>
         </ScrollView>
+      </View>
+
+      {/* Recent Zonal Reports */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Recent Zonal Reports</Text>
+        {db.zonalReports && db.zonalReports.length > 0 ? (
+          db.zonalReports.slice(0, 5).map((report, idx) => {
+            const dateObj = new Date(report.date || report.createdAt);
+            const dateString = dateObj.toLocaleDateString() === new Date().toLocaleDateString()
+              ? `Today, ${dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`
+              : dateObj.toLocaleDateString();
+
+            return (
+              <View key={idx} style={{ paddingVertical: 12, borderBottomWidth: idx !== Math.min(db.zonalReports.length, 5)-1 ? 1 : 0, borderBottomColor: '#F3F4F6' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <Text style={{ fontWeight: 'bold', color: '#111827', fontSize: 14 }}>{report.zoneName}</Text>
+                  <Text style={{ color: '#6B7280', fontSize: 12 }}>{dateString}</Text>
+                </View>
+                <Text style={{ color: '#4B5563', fontSize: 14, fontStyle: 'italic', marginBottom: 4 }}>"{report.comments}"</Text>
+                <Text style={{ color: '#9CA3AF', fontSize: 11 }}>Submitted by: {report.submittedBy}</Text>
+              </View>
+            );
+          })
+        ) : (
+          <Text style={{ textAlign: 'center', color: '#6B7280', padding: 20 }}>No reports submitted yet.</Text>
+        )}
       </View>
     </ScrollView>
     </View>

@@ -1,9 +1,9 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, ImageBackground, TouchableOpacity, Modal, TouchableWithoutFeedback, ScrollView, Animated, Easing, Dimensions, SafeAreaView, TextInput, LayoutAnimation, Platform, UIManager, Image } from 'react-native';
+import { StyleSheet, Text, View, ImageBackground, TouchableOpacity, Modal, TouchableWithoutFeedback, ScrollView, Animated, Easing, Dimensions, TextInput, LayoutAnimation, Platform, UIManager, Image } from 'react-native';
 import { ReactNativeZoomableView } from '@openspacelabs/react-native-zoomable-view';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { ZONAL_HEADS } from '../../data/zonalHeads';
 
 const getMarkerColor = (status) => {
@@ -136,7 +136,10 @@ export default function AdminHome({ onNavigate }) {
     
     const zoneComplaints = db.complaints.filter(c => extractZoneNumber(c.zone) === parseInt(z.id) && c.status === 'Pending');
     
-    const zoneSZHs = staticData?.subZonalHeads?.filter(s => s.zone === parseInt(z.id)) || [];
+    const zoneSZHs = staticData?.subZonalHeads?.filter(s => {
+      const sZoneNum = s.zone ? String(s.zone).replace(/\D/g, '') : null;
+      return sZoneNum === String(z.id);
+    }) || [];
     const recentSubs = zoneSZHs.map(sz => {
       return db.checklistSubmissions
         .filter(s => s.subZonalHeadId === sz.id)

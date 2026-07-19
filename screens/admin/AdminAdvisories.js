@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, LayoutAnimation, Platform, UIManager, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,7 +7,7 @@ import { SUB_ZONAL_HEADS } from '../../data/subZonalHeads';
 
 
 export default function AdminAdvisories({ onNavigate }) {
-  const { zones, staticData, SZH, publishAdvisory } = useContext(DataContext);
+  const { zones, staticData, SZH, publishAdvisory, addHead, removeHead, replaceHead } = useContext(DataContext);
   const insets = useSafeAreaInsets();
   
   const dynamicZones = ['All Zones', ...zones.map(z => z.name)];
@@ -52,6 +52,12 @@ export default function AdminAdvisories({ onNavigate }) {
   const [showAddHeadZoneDropdown, setShowAddHeadZoneDropdown] = useState(false);
   const [subZonalFilterZone, setSubZonalFilterZone] = useState('All Zones');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  
+  const [replaceModalVisible, setReplaceModalVisible] = useState(false);
+  const [headToReplace, setHeadToReplace] = useState(null);
+  const [replaceHeadType, setReplaceHeadType] = useState('');
+  const [replaceName, setReplaceName] = useState('');
+  const [replaceEmail, setReplaceEmail] = useState('');
 
   const handleZoneSelect = (z) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -123,6 +129,35 @@ export default function AdminAdvisories({ onNavigate }) {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: () => removeHead(type, id) }
     ]);
+  };
+
+  const openReplaceModal = (type, head) => {
+    setReplaceHeadType(type);
+    setHeadToReplace(head);
+    setReplaceName('');
+    setReplaceEmail('');
+    setReplaceModalVisible(true);
+  };
+  
+  const handleReplaceSubmit = async () => {
+    if (!replaceName || !replaceEmail) {
+      Alert.alert('Error', 'Please enter the new Name and Email.');
+      return;
+    }
+    
+    const updatedData = {
+      ...headToReplace,
+      name: replaceName,
+      email: replaceEmail
+    };
+    
+    const res = await replaceHead(replaceHeadType, headToReplace._id, updatedData);
+    if (res.success) {
+      Alert.alert('Success', 'Role replaced successfully!');
+      setReplaceModalVisible(false);
+    } else {
+      Alert.alert('Error', 'Failed to replace head.');
+    }
   };
 
   return (
@@ -270,9 +305,14 @@ export default function AdminAdvisories({ onNavigate }) {
                       <Text style={styles.headName}>{zh.name}</Text>
                       <Text style={styles.headDetail}>{zh.zone} • {zh.email}</Text>
                     </View>
-                    <TouchableOpacity onPress={() => handleDeleteHead('zonal', zh._id)}>
-                      <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                    </TouchableOpacity>
+                    <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                      <TouchableOpacity onPress={() => openReplaceModal('zonal', zh)} style={{marginRight: 15}}>
+                        <Ionicons name="sync-outline" size={20} color="#3B82F6" />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDeleteHead('zonal', zh._id)}>
+                        <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 ))}
                 {(!staticData?.zonalHeads || staticData.zonalHeads.length === 0) && <Text style={styles.noData}>No Zonal Heads found.</Text>}
@@ -316,9 +356,14 @@ export default function AdminAdvisories({ onNavigate }) {
                       <Text style={styles.headName}>{szh.name}</Text>
                       <Text style={styles.headDetail}>{szh.zone} - {szh.subZone || szh.areasCovered} • {szh.email}</Text>
                     </View>
-                    <TouchableOpacity onPress={() => handleDeleteHead('subzonal', szh._id)}>
-                      <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                    </TouchableOpacity>
+                    <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                      <TouchableOpacity onPress={() => openReplaceModal('subzonal', szh)} style={{marginRight: 15}}>
+                        <Ionicons name="sync-outline" size={20} color="#3B82F6" />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDeleteHead('subzonal', szh._id)}>
+                        <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 ))}
                 {(!staticData?.subZonalHeads || staticData.subZonalHeads.length === 0) && <Text style={styles.noData}>No Sub-Zonal Heads found.</Text>}
@@ -327,6 +372,36 @@ export default function AdminAdvisories({ onNavigate }) {
           </View>
         </View>
       )}
+
+      {/* Replace Modal */}
+      <Modal visible={replaceModalVisible} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Replace {replaceHeadType === 'zonal' ? 'Zonal' : 'Sub-Zonal'} Head</Text>
+            <Text style={styles.modalSubtitle}>Update the person handling this role. The assigned zone will remain unchanged.</Text>
+            
+            <View style={styles.lockedDataBox}>
+              <Text style={styles.lockedDataText}>
+                Locked Zone: {headToReplace?.zone}
+                {replaceHeadType === 'subzonal' && ` - ${headToReplace?.subZone || headToReplace?.areasCovered}`}
+              </Text>
+            </View>
+
+            <TextInput style={styles.inputField} placeholder="New Full Name" value={replaceName} onChangeText={setReplaceName} />
+            <TextInput style={styles.inputField} placeholder="New Email Address" keyboardType="email-address" value={replaceEmail} onChangeText={setReplaceEmail} autoCapitalize="none" />
+
+            <View style={styles.modalActionRow}>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={() => setReplaceModalVisible(false)}>
+                <Text style={styles.modalBtnTextCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnSubmit]} onPress={handleReplaceSubmit}>
+                <Text style={styles.modalBtnTextSubmit}>Replace</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </ScrollView>
     </View>
   );
@@ -359,5 +434,17 @@ const styles = StyleSheet.create({
   headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   headName: { fontSize: 15, fontWeight: '600', color: '#111827' },
   headDetail: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-  noData: { color: '#9CA3AF', fontStyle: 'italic', marginTop: 10 }
+  noData: { color: '#9CA3AF', fontStyle: 'italic', marginTop: 10 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#FFF', borderRadius: 16, padding: 24, width: '100%', shadowColor: '#000', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.1, shadowRadius: 12, elevation: 5 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#111827', marginBottom: 6 },
+  modalSubtitle: { fontSize: 13, color: '#6B7280', marginBottom: 20 },
+  lockedDataBox: { backgroundColor: '#F3F4F6', padding: 12, borderRadius: 8, marginBottom: 20, borderWidth: 1, borderColor: '#E5E7EB' },
+  lockedDataText: { fontSize: 14, fontWeight: '500', color: '#4B5563', textAlign: 'center' },
+  modalActionRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
+  modalBtn: { flex: 1, padding: 14, borderRadius: 8, alignItems: 'center' },
+  modalBtnCancel: { backgroundColor: '#F3F4F6', marginRight: 10 },
+  modalBtnSubmit: { backgroundColor: '#8C1B2F', marginLeft: 10 },
+  modalBtnTextCancel: { color: '#4B5563', fontWeight: 'bold', fontSize: 15 },
+  modalBtnTextSubmit: { color: '#FFF', fontWeight: 'bold', fontSize: 15 }
 });

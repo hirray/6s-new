@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
 
@@ -17,11 +17,23 @@ export default function SubZonalConcerns() {
     if (!currentUser?.data) return false;
     const cZoneNum = extractZoneNumber(c.zone);
     const userZoneNum = extractZoneNumber(currentUser.data.zone);
-    // c.subZone contains a long string like "Sub-Zone 1: ... Main Entrance...", so we check if it includes the area
-    return (cZoneNum === userZoneNum) && (
-      !currentUser.data.areasCovered || 
-      (c.subZone && c.subZone.includes(currentUser.data.areasCovered))
-    );
+    
+    if (cZoneNum !== userZoneNum) return false;
+
+    const cSub = c.subZone || '';
+    const userAreas = currentUser.data.areasCovered || '';
+    const userSubNum = currentUser.data.subZone || '';
+
+    // 1. Strict match on specific areas covered
+    if (userAreas && cSub.includes(userAreas)) return true;
+    
+    // 2. Match on the Sub-Zone number (e.g. "Sub-Zone 1")
+    if (userSubNum && cSub.includes(`Sub-Zone ${userSubNum}`)) return true;
+    
+    // 3. Fallback for mock data (e.g., "Ground Floor" which doesn't have "Sub-Zone X:")
+    if (!cSub.includes('Sub-Zone')) return true;
+
+    return false;
   });
 
   return (
@@ -63,19 +75,37 @@ export default function SubZonalConcerns() {
                   onChangeText={(val) => setResolutions({...resolutions, [c.id]: val})}
                   multiline
                 />
-                <TouchableOpacity 
-                  style={styles.resolveButton}
-                  onPress={() => {
-                    if(!resolutions[c.id]) {
-                      Alert.alert('Required', 'Please enter remarks to resolve this concern.');
-                      return;
-                    }
-                    resolveComplaint(c.id, resolutions[c.id], null);
-                    Alert.alert('Resolved', 'Concern has been marked as resolved.');
-                  }}
-                >
-                  <Text style={styles.resolveButtonText}>Mark as Resolved</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <TouchableOpacity 
+                    style={[styles.resolveButton, { flex: 1, marginRight: 8, backgroundColor: '#1A8C4E' }]}
+                    onPress={() => {
+                      if(!resolutions[c.id]) {
+                        Alert.alert('Required', 'Please enter a note before approving.');
+                        return;
+                      }
+                      resolveComplaint(c.id, `[APPROVED] ${resolutions[c.id]}`, null);
+                      Alert.alert('Approved', 'Concern has been approved and logged.');
+                    }}
+                  >
+                    <Ionicons name="checkmark-circle" size={18} color="#FFF" style={{marginRight: 4}} />
+                    <Text style={styles.resolveButtonText}>Approve</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.resolveButton, { flex: 1, marginLeft: 8, backgroundColor: '#C0182A' }]}
+                    onPress={() => {
+                      if(!resolutions[c.id]) {
+                        Alert.alert('Required', 'Please enter a reason for rejection.');
+                        return;
+                      }
+                      resolveComplaint(c.id, `[REJECTED] ${resolutions[c.id]}`, null);
+                      Alert.alert('Rejected', 'Concern has been rejected and sent back.');
+                    }}
+                  >
+                    <Ionicons name="close-circle" size={18} color="#FFF" style={{marginRight: 4}} />
+                    <Text style={styles.resolveButtonText}>Reject</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>

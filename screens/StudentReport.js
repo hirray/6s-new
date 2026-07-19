@@ -1,5 +1,6 @@
 import React, { useState, useContext } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert, Modal, Image, SafeAreaView, Platform, StatusBar } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert, Modal, Image, Platform, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { DataContext } from '../context/DataContext';
@@ -440,7 +441,9 @@ export default function StudentReport({ navigation }) {
           image: c.imageUri || c.image || null,
           timeline: [
             { title: 'Concern Submitted', time: c.timestamp || c.date || 'Recently', state: 'completed' },
-            ...(c.status === 'Resolved' ? [{ title: 'Resolved', time: (c.remarks && c.remarks.length > 0) ? c.remarks[c.remarks.length - 1].date : 'Recently', state: 'completed' }] : [{ title: 'Under Review', time: 'Pending', state: 'current' }])
+            { title: 'Under Review (Sub-Zonal Head)', time: c.status === 'Resolved' ? 'Reviewed' : 'Currently under review', state: c.status === 'Resolved' ? 'completed' : 'current' },
+            { title: 'Action Taken', time: c.status === 'Resolved' ? 'Necessary actions applied' : 'Pending', state: c.status === 'Resolved' ? 'completed' : 'pending' },
+            { title: 'Resolved', time: c.status === 'Resolved' ? 'Concern Closed' : 'Pending resolution', state: c.status === 'Resolved' ? 'completed' : 'pending' }
           ]
         })).map((report) => {
           const categoryObj = CATEGORIES.find(cat => cat.id === report.categoryId) || CATEGORIES[7];

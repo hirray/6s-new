@@ -12,6 +12,19 @@ const API_URL = 'https://six-7uud.onrender.com/api';
 
 export const DataProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
+  const [avatars, setAvatars] = useState({});
+
+  useEffect(() => {
+    const loadAvatars = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('@avatars');
+        if (stored) setAvatars(JSON.parse(stored));
+      } catch (e) {
+        // Silently ignore avatar load errors
+      }
+    };
+    loadAvatars();
+  }, []);
 
   const login = async (userData) => {
     try {
@@ -105,7 +118,8 @@ export const DataProvider = ({ children }) => {
     advisories: [
       { id: '1', targetZone: 'All Zones', targetSubZone: 'All Sub-Zones', text: 'Ensure all fire extinguishers are inspected by Friday.', date: 'Today, 10:00 AM', author: 'Core Admin', replies: [] },
       { id: '2', targetZone: 'Zone 1 – Anviksha', targetSubZone: 'Ground Floor / Block A', text: 'Corridor lights need immediate replacement.', date: 'Yesterday, 2:30 PM', author: 'Zone Supervisor', replies: [{ author: 'Mr. Rajesh Patel', text: 'Lights replaced today morning.', date: 'Today, 9:00 AM' }] },
-    ]
+    ],
+    zonalReports: []
   };
 
   const [db, setDb] = useState(initialDbState);
@@ -119,20 +133,22 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     const fetchFromAPI = async () => {
       try {
-        const [complaintsRes, advisoriesRes, zhRes, szhRes, clRes, submissionsRes] = await Promise.all([
+        const [complaintsRes, advisoriesRes, zhRes, szhRes, clRes, submissionsRes, zonalReportsRes] = await Promise.all([
           axios.get(`${API_URL}/complaints`),
           axios.get(`${API_URL}/advisories`),
           axios.get(`${API_URL}/data/zonalheads`),
           axios.get(`${API_URL}/data/subzonalheads`),
           axios.get(`${API_URL}/data/checklists`),
-          axios.get(`${API_URL}/submissions`)
+          axios.get(`${API_URL}/submissions`),
+          axios.get(`${API_URL}/submissions/zonal-reports`)
         ]);
         
         setDb(prev => ({
           ...prev,
           complaints: complaintsRes.data.map(c => ({ ...c, id: c._id })),
           advisories: advisoriesRes.data.map(a => ({ ...a, id: a._id })),
-          checklistSubmissions: submissionsRes.data.map(s => ({ ...s, id: s._id }))
+          checklistSubmissions: submissionsRes.data.map(s => ({ ...s, id: s._id })),
+          zonalReports: zonalReportsRes.data.map(r => ({ ...r, id: r._id }))
         }));
         setStaticData({
           zonalHeads: zhRes.data,
@@ -188,6 +204,63 @@ export const DataProvider = ({ children }) => {
       return { success: true };
     } catch (error) {
       console.error(`Error removing ${type} head`, error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const replaceHead = async (type, id, updatedData) => {
+    try {
+      const endpoint = type === 'zonal' ? 'zonalheads' : 'subzonalheads';
+      const res = await axios.put(`${API_URL}/data/${endpoint}/${id}`, updatedData);
+      setStaticData(prev => ({
+        ...prev,
+        [type === 'zonal' ? 'zonalHeads' : 'subZonalHeads']: prev[type === 'zonal' ? 'zonalHeads' : 'subZonalHeads'].map(h => h._id === id ? res.data : h)
+      }));
+      return { success: true };
+    } catch (error) {
+      console.error(`Error replacing ${type} head`, error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const updateProfile = async (role, id, newData) => {
+    try {
+      if (newData.avatarUri) {
+        const newAvatars = { ...avatars, [id]: newData.avatarUri };
+        setAvatars(newAvatars);
+        await AsyncStorage.setItem('@avatars', JSON.stringify(newAvatars));
+      }
+      
+      let updatedUser = { ...currentUser };
+      if (newData.name) {
+        updatedUser.name = newData.name;
+        if (updatedUser.data) updatedUser.data.name = newData.name;
+      }
+      if (newData.email && updatedUser.data) updatedUser.data.email = newData.email;
+
+      // Update backend if it's a known database role (not local Admin)
+      if (role === 'ZonalHead' || role === 'SubZonalHead') {
+        const endpoint = role === 'ZonalHead' ? 'zonalheads' : 'subzonalheads';
+        // id here can be MongoDB _id. We check if the id passed is valid.
+        const dbId = currentUser?.data?._id || id;
+        
+        const res = await axios.put(`${API_URL}/data/${endpoint}/${dbId}`, {
+          name: newData.name,
+          email: newData.email
+        });
+        
+        setStaticData(prev => ({
+          ...prev,
+          [role === 'ZonalHead' ? 'zonalHeads' : 'subZonalHeads']: prev[role === 'ZonalHead' ? 'zonalHeads' : 'subZonalHeads'].map(h => h._id === dbId ? res.data : h)
+        }));
+        
+        updatedUser.data = res.data;
+      }
+
+      setCurrentUser(updatedUser);
+      return { success: true };
+    } catch (error) {
+      console.error("Error updating profile", error);
       return { success: false, error: error.message };
     }
   };
@@ -248,12 +321,14 @@ export const DataProvider = ({ children }) => {
     }));
   };
 
-  const submitChecklist = async (subZonalHeadId, zone, score) => {
+  const submitChecklist = async (subZonalHeadId, zone, score, remarks = []) => {
     try {
       const res = await axios.post(`${API_URL}/submissions`, {
         subZonalHeadId: subZonalHeadId || 'unknown_id',
         zone: zone ? zone.toString() : 'Unknown',
-        score: score || 0
+        score: score || 0,
+        date: new Date().toISOString(),
+        remarks: remarks
       });
       setDb(prev => ({
         ...prev,
@@ -264,6 +339,42 @@ export const DataProvider = ({ children }) => {
       if (error.response) {
         console.error('Backend validation error:', error.response.data);
       }
+    }
+  };
+
+  const approveChecklist = async (submissionId) => {
+    try {
+      const res = await axios.put(`${API_URL}/submissions/${submissionId}/approve`, {
+        approvedBy: currentUser?.name || 'Zonal Head'
+      });
+      setDb(prev => ({
+        ...prev,
+        checklistSubmissions: prev.checklistSubmissions.map(sub => 
+          (sub.id === submissionId || sub._id === submissionId) ? { ...res.data, id: res.data._id } : sub
+        )
+      }));
+      return true;
+    } catch (error) {
+      console.error('Error approving checklist', error);
+      return false;
+    }
+  };
+
+  const submitZonalReport = async (zoneName, comments) => {
+    try {
+      const res = await axios.post(`${API_URL}/submissions/zonal-reports`, {
+        zoneName,
+        comments,
+        submittedBy: currentUser?.name || 'Zonal Head'
+      });
+      setDb(prev => ({
+        ...prev,
+        zonalReports: [res.data, ...prev.zonalReports]
+      }));
+      return true;
+    } catch (error) {
+      console.error('Error submitting zonal report', error);
+      return false;
     }
   };
 
@@ -283,11 +394,16 @@ export const DataProvider = ({ children }) => {
       submitComplaint,
       resolveComplaint,
       submitChecklist,
+      approveChecklist,
+      submitZonalReport,
       updateZoneScore,
       addAdvisoryReply,
       staticData,
       addHead,
-      removeHead
+      removeHead,
+      replaceHead,
+      updateProfile,
+      avatars
     }}>
       {children}
     </DataContext.Provider>

@@ -1,11 +1,11 @@
 import React, { useState, useContext } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
 import { SUB_ZONAL_HEADS } from '../../data/subZonalHeads';
 
 export default function ZonalSubZoneLogs({ onBackToHome }) {
-  const { currentUser, db } = useContext(DataContext);
+  const { currentUser, db, approveChecklist } = useContext(DataContext);
   const [selectedFloor, setSelectedFloor] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedS, setExpandedS] = useState(null);
@@ -48,8 +48,8 @@ export default function ZonalSubZoneLogs({ onBackToHome }) {
       {floors.filter(f => f.areasCovered.toLowerCase().includes(searchQuery.toLowerCase())).map(floor => {
         const latestLog = db.checklistSubmissions
               .filter(sub => sub.subZonalHeadId === floor.id)
-              .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-        const compliance = latestLog ? latestLog.score : Math.floor(Math.random() * 40) + 60;
+              .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))[0];
+        const compliance = latestLog ? latestLog.score : 0;
         const pending = db.complaints.filter(c => c.zone === floor.zone && c.subZone === floor.areasCovered && c.status !== 'Resolved').length;
         const resolved = db.complaints.filter(c => c.zone === floor.zone && c.subZone === floor.areasCovered && c.status === 'Resolved').length;
         const color = compliance >= 85 ? '#10B981' : compliance >= 60 ? '#F97316' : '#EF4444';
@@ -91,20 +91,24 @@ export default function ZonalSubZoneLogs({ onBackToHome }) {
     // Determine the latest checklist for drill down
     const latestLog = db.checklistSubmissions
       .filter(sub => sub.subZonalHeadId === selectedFloor.id)
-      .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+      .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))[0];
     
-    // Fallback Mock logic for specific S categories
-    const getScore = (label) => {
-      return latestLog ? Math.floor(Math.random() * 20) + 80 : Math.floor(Math.random() * 20) + 70;
+    const baseScore = latestLog ? latestLog.score : 0;
+    
+    // Deterministic 6S Fluctuation
+    const getScore = (index) => {
+      if (baseScore === 0) return 0;
+      const offsets = [-2, 3, -1, 4, -3, 1];
+      return Math.min(100, Math.max(0, baseScore + offsets[index]));
     };
 
     const sCategories = [
-      { id: '1S', label: 'Seiri', sub: 'Sort', score: getScore('1S'), color: '#10B981', tasks: ['Are unneeded items removed from the area?'] },
-      { id: '2S', label: 'Seiton', sub: 'Set In Order', score: getScore('2S'), color: '#F97316', tasks: ['Is everything in its designated place?'] },
-      { id: '3S', label: 'Seiso', sub: 'Shine', score: getScore('3S'), color: '#10B981', tasks: ['Is the area clean and free of debris?'] },
-      { id: '4S', label: 'Seiketsu', sub: 'Standardize', score: getScore('4S'), color: '#10B981', tasks: ['Are standard procedures visible and followed?'] },
-      { id: '5S', label: 'Shitsuke', sub: 'Sustain', score: getScore('5S'), color: '#F97316', tasks: ['Are audits being conducted regularly?'] },
-      { id: '6S', label: 'Safety', sub: 'Safety', score: getScore('6S'), color: '#10B981', tasks: ['Are all safety hazards mitigated?'] },
+      { id: '1S', label: 'Seiri', sub: 'Sort', score: getScore(0), color: getScore(0) >= 80 ? '#10B981' : (getScore(0) >= 60 ? '#F97316' : '#EF4444'), tasks: ['Are unneeded items removed from the area?'] },
+      { id: '2S', label: 'Seiton', sub: 'Set In Order', score: getScore(1), color: getScore(1) >= 80 ? '#10B981' : (getScore(1) >= 60 ? '#F97316' : '#EF4444'), tasks: ['Is everything in its designated place?'] },
+      { id: '3S', label: 'Seiso', sub: 'Shine', score: getScore(2), color: getScore(2) >= 80 ? '#10B981' : (getScore(2) >= 60 ? '#F97316' : '#EF4444'), tasks: ['Is the area clean and free of debris?'] },
+      { id: '4S', label: 'Seiketsu', sub: 'Standardize', score: getScore(3), color: getScore(3) >= 80 ? '#10B981' : (getScore(3) >= 60 ? '#F97316' : '#EF4444'), tasks: ['Are standard procedures visible and followed?'] },
+      { id: '5S', label: 'Shitsuke', sub: 'Sustain', score: getScore(4), color: getScore(4) >= 80 ? '#10B981' : (getScore(4) >= 60 ? '#F97316' : '#EF4444'), tasks: ['Are audits being conducted regularly?'] },
+      { id: '6S', label: 'Safety', sub: 'Safety', score: getScore(5), color: getScore(5) >= 80 ? '#10B981' : (getScore(5) >= 60 ? '#F97316' : '#EF4444'), tasks: ['Are all safety hazards mitigated?'] },
     ];
 
     // Filter real concerns for this floor
@@ -120,7 +124,7 @@ export default function ZonalSubZoneLogs({ onBackToHome }) {
             <Text style={styles.headerTitle} numberOfLines={1}>Floor Overview</Text>
             <Text style={styles.headerSubtitle} numberOfLines={1}>{selectedFloor.areasCovered}</Text>
           </View>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => Alert.alert('History', 'Calendar view is coming soon!')}>
             <Ionicons name="calendar-outline" size={24} color="#611624" />
           </TouchableOpacity>
         </View>
@@ -157,9 +161,20 @@ export default function ZonalSubZoneLogs({ onBackToHome }) {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.approveBtn}>
-          <Text style={styles.approveBtnText}>Approve Work</Text>
-        </TouchableOpacity>
+        {latestLog && (
+          <TouchableOpacity 
+            style={[styles.approveBtn, latestLog.approved && { backgroundColor: '#D1D5DB' }]} 
+            disabled={latestLog.approved}
+            onPress={async () => {
+              const success = await approveChecklist(latestLog.id);
+              if(success) {
+                Alert.alert('Success', 'Work for this area has been approved and logged.');
+              }
+            }}
+          >
+            <Text style={styles.approveBtnText}>{latestLog.approved ? 'Work Approved' : 'Approve Work'}</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Recent Concerns */}
         <View style={styles.sectionHeaderRow}>
@@ -271,6 +286,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   logCardTitle: {
+    flex: 1,
     fontSize: 16,
     fontWeight: '800',
     color: '#1F2937',

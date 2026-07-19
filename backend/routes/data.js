@@ -23,6 +23,19 @@ router.post('/zonalheads', async (req, res) => {
   }
 });
 
+router.put('/zonalheads/:id', async (req, res) => {
+  try {
+    const updatedHead = await ZonalHead.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true }
+    );
+    res.json(updatedHead);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.delete('/zonalheads/:id', async (req, res) => {
   try {
     await ZonalHead.findByIdAndDelete(req.params.id);
@@ -46,6 +59,19 @@ router.post('/subzonalheads', async (req, res) => {
     const newHead = new SubZonalHead(req.body);
     const savedHead = await newHead.save();
     res.status(201).json(savedHead);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/subzonalheads/:id', async (req, res) => {
+  try {
+    const updatedHead = await SubZonalHead.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true }
+    );
+    res.json(updatedHead);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

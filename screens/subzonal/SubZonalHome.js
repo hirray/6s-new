@@ -4,7 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
 
 export default function SubZonalHome({ onSelectCategory, checklistProgress = {}, onFinalSubmit }) {
-  const { currentUser } = useContext(DataContext);
+  const { currentUser, db } = useContext(DataContext);
+  
+  const zoneSub = currentUser?.data?.zone || currentUser?.zone;
+  
+  const relevantAdvisories = db.advisories.filter(a => {
+    if (a.targetZone === 'All Zones') return true;
+    if (zoneSub && a.targetZone && a.targetZone.startsWith(zoneSub)) return true;
+    return false;
+  }).sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
   
   const completedTasks = Object.keys(checklistProgress).length;
   const totalTasks = 6;
@@ -128,12 +136,27 @@ export default function SubZonalHome({ onSelectCategory, checklistProgress = {},
         </TouchableOpacity>
       </View>
 
-      {/* Submit Button */}
-      {completedTasks > 0 && (
-        <TouchableOpacity style={styles.finalSubmitButton} onPress={onFinalSubmit}>
-          <Text style={styles.finalSubmitButtonText}>Submit Audit ({completedTasks}/6)</Text>
-        </TouchableOpacity>
-      )}
+
+
+      {/* Advisories */}
+      <View style={styles.historySection}>
+        <Text style={styles.historyTitle}>Recent Advisories</Text>
+        {relevantAdvisories.length === 0 ? (
+          <Text style={styles.emptyHistoryText}>No recent advisories for your zone.</Text>
+        ) : (
+          relevantAdvisories.slice(0, 5).map(adv => (
+            <View key={adv.id} style={styles.historyCard}>
+              <View style={[styles.historyIconCircle, { backgroundColor: '#F0F9FF' }]}>
+                <Ionicons name="megaphone" size={20} color="#0284C7" />
+              </View>
+              <View style={styles.historyContent}>
+                <Text style={styles.historyDate}>{adv.author} • {adv.date ? adv.date : new Date(adv.createdAt).toLocaleString()}</Text>
+                <Text style={styles.historyScore}>{adv.text}</Text>
+              </View>
+            </View>
+          ))
+        )}
+      </View>
 
     </ScrollView>
   );
@@ -348,6 +371,65 @@ const styles = StyleSheet.create({
   finalSubmitButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  historySection: {
+    marginTop: 32,
+    marginBottom: 20,
+  },
+  historyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  emptyHistoryText: {
+    color: '#6B7280',
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
+  historyCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  historyIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FCE7F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  historyContent: {
+    flex: 1,
+  },
+  historyDate: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  historyScore: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  historyBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  historyBadgeText: {
+    fontSize: 11,
     fontWeight: 'bold',
   }
 });

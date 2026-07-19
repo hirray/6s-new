@@ -1,7 +1,8 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Dimensions, Modal, TextInput, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 
 const { width } = Dimensions.get('window');
 
@@ -13,8 +14,38 @@ const { width } = Dimensions.get('window');
  * @param {Function} onLogout - Callback for log out button
  * @param {React.ReactNode} children - Role-specific cards and content
  */
-export default function ProfileLayout({ name, role, onLogout, children, onNavigate }) {
+export default function ProfileLayout({ name, email, role, avatarUri, onLogout, onUpdateProfile, children, onNavigate }) {
   const insets = useSafeAreaInsets();
+  const [isEditModalVisible, setEditModalVisible] = useState(false);
+  
+  const [editName, setEditName] = useState(name || '');
+  const [editEmail, setEditEmail] = useState(email || '');
+  const [editAvatar, setEditAvatar] = useState(avatarUri || null);
+
+  const handlePickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      setEditAvatar(result.assets[0].uri);
+    }
+  };
+
+  const handleSave = async () => {
+    if (onUpdateProfile) {
+      await onUpdateProfile({
+        name: editName,
+        email: editEmail,
+        avatarUri: editAvatar !== avatarUri ? editAvatar : null
+      });
+    }
+    setEditModalVisible(false);
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Single Color Background is handled by container style */}
@@ -32,7 +63,11 @@ export default function ProfileLayout({ name, role, onLogout, children, onNaviga
           )}
           <View style={styles.avatarContainer}>
             <View style={styles.avatarInner}>
-              <Ionicons name="person" size={56} color="#8C1B2F" />
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+              ) : (
+                <Ionicons name="person" size={56} color="#8C1B2F" />
+              )}
             </View>
             <View style={styles.onlineIndicator} />
           </View>
@@ -41,6 +76,20 @@ export default function ProfileLayout({ name, role, onLogout, children, onNaviga
             <Ionicons name="shield-checkmark" size={14} color="#FFFFFF" style={{marginRight: 6}}/>
             <Text style={styles.roleText}>{role || 'User'}</Text>
           </View>
+
+          {onUpdateProfile && (
+            <TouchableOpacity 
+              style={styles.editProfileBtn} 
+              onPress={() => {
+                setEditName(name || '');
+                setEditEmail(email || '');
+                setEditAvatar(avatarUri || null);
+                setEditModalVisible(true);
+              }}
+            >
+              <Text style={styles.editProfileText}>Edit Profile</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Specific Profile Cards inserted here */}
@@ -57,6 +106,69 @@ export default function ProfileLayout({ name, role, onLogout, children, onNaviga
         {/* Bottom padding for FloatingNavBar */}
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Edit Profile Modal (Instagram Style) */}
+      <Modal
+        visible={isEditModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Edit Profile</Text>
+              <TouchableOpacity onPress={handleSave}>
+                <Text style={styles.doneText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.editAvatarSection}>
+              <TouchableOpacity onPress={handlePickImage} style={styles.editAvatarWrapper}>
+                <View style={styles.editAvatarInner}>
+                  {editAvatar ? (
+                    <Image source={{ uri: editAvatar }} style={styles.avatarImage} />
+                  ) : (
+                    <Ionicons name="person" size={60} color="#9CA3AF" />
+                  )}
+                </View>
+                <View style={styles.editIconBadge}>
+                  <Ionicons name="camera" size={16} color="#FFF" />
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handlePickImage}>
+                <Text style={styles.changePhotoText}>Change Profile Photo</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.formSection}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Name</Text>
+                <TextInput
+                  style={styles.inputField}
+                  value={editName}
+                  onChangeText={setEditName}
+                  placeholder="Your Name"
+                />
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Email</Text>
+                <TextInput
+                  style={[styles.inputField, { color: '#9CA3AF' }]}
+                  value={editEmail}
+                  editable={false}
+                  placeholder="Your Email"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -150,6 +262,120 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 10,
     letterSpacing: 0.5,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 60,
+  },
+  editProfileBtn: {
+    marginTop: 15,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  editProfileText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#FAFAF8',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+    minHeight: '75%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  cancelText: {
+    fontSize: 16,
+    color: '#111827',
+  },
+  doneText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#3B82F6', // iOS Blue
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  editAvatarSection: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  editAvatarWrapper: {
+    position: 'relative',
+    marginBottom: 12,
+  },
+  editAvatarInner: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  editIconBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#3B82F6',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#FAFAF8',
+  },
+  changePhotoText: {
+    color: '#3B82F6',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  formSection: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  inputGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  inputLabel: {
+    width: 80,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  inputField: {
+    flex: 1,
+    fontSize: 15,
+    color: '#111827',
   }
 });
 

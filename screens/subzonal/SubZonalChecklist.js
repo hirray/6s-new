@@ -37,12 +37,26 @@ export default function SubZonalChecklist({ category, onBack, onSaveProgress }) 
   const handleSave = () => {
     const totalItems = items.length;
     let score = 0;
+    let categoryRemarks = [];
+
     if (totalItems > 0) {
       const checkedCount = Object.values(checklistState).filter(s => s.checked).length;
       score = Math.round((checkedCount / totalItems) * 100);
+
+      // Collect remarks for any unticked items
+      items.forEach((itemText, index) => {
+        const state = checklistState[index];
+        if (state && !state.checked) {
+          categoryRemarks.push({
+            task: itemText,
+            comment: state.remarks || 'No remarks provided'
+          });
+        }
+      });
     }
+
     if (onSaveProgress) {
-      onSaveProgress(category, score);
+      onSaveProgress(category, score, categoryRemarks);
     } else {
       onBack();
     }

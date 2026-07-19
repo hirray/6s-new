@@ -5,7 +5,8 @@ import { DataContext } from '../../context/DataContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
+import { File, Paths } from 'expo-file-system';
 import * as XLSX from 'xlsx';
 
 
@@ -150,9 +151,9 @@ export default function AdminZones({ onNavigate }) {
       `;
 
       const { uri } = await Print.printToFileAsync({ html: htmlContent });
-      const newUri = FileSystem.documentDirectory + `report_${Date.now()}.pdf`;
-      await FileSystem.moveAsync({ from: uri, to: newUri });
-      await shareAsync(newUri, { UTI: '.pdf', mimeType: 'application/pdf' });
+      const newUri = FileSystemLegacy.cacheDirectory + `report_${Date.now()}.pdf`;
+      await FileSystemLegacy.copyAsync({ from: uri, to: newUri });
+      await shareAsync(newUri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: `Share ${zone.name} Report` });
     } catch (err) {
       console.error(err);
       alert('Failed to generate PDF report.');
@@ -181,10 +182,10 @@ export default function AdminZones({ onNavigate }) {
       XLSX.utils.book_append_sheet(wb, ws, "Zone Report");
 
       const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
-      const uri = FileSystem.documentDirectory + `${zone.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_report.xlsx`;
+      const uri = FileSystemLegacy.cacheDirectory + `${zone.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_report.xlsx`;
       
-      await FileSystem.writeAsStringAsync(uri, wbout, {
-        encoding: FileSystem.EncodingType.Base64
+      await FileSystemLegacy.writeAsStringAsync(uri, wbout, {
+        encoding: FileSystemLegacy.EncodingType.Base64
       });
       
       await shareAsync(uri, {

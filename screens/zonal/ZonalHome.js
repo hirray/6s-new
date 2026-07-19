@@ -1,12 +1,15 @@
-import React, { useContext } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useContext, useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
 import { SUB_ZONAL_HEADS } from '../../data/subZonalHeads';
 
 export default function ZonalHome({ onSelectSubZone }) {
-  const { currentUser } = useContext(DataContext);
+  const { currentUser, db, submitZonalReport } = useContext(DataContext);
   const myZoneName = currentUser?.data?.zone; // e.g., 'Zone 1'
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportComments, setReportComments] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get unique sub-zones for this zone
   const subZonesInZone = SUB_ZONAL_HEADS.filter(h => h.zone === myZoneName);
@@ -21,11 +24,36 @@ export default function ZonalHome({ onSelectSubZone }) {
 
   const uniqueAreas = Object.values(uniqueAreasMap);
 
-  // For demo, assign mock status (red, yellow, green)
-  const getMockStatus = (index) => {
-    if (index % 3 === 0) return { color: '#1A8C4E', bg: '#D1FAE5', label: 'Fully Completed', text: 'Green' };
-    if (index % 3 === 1) return { color: '#D97706', bg: '#FEF3C7', label: 'Half Way', text: 'Yellow' };
-    return { color: '#DC2626', bg: '#FEE2E2', label: 'Not Done', text: 'Red' };
+  const getLiveStatus = (areaId, areaEmail) => {
+    const latestLog = db.checklistSubmissions
+      .filter(sub => sub.subZonalHeadId === areaId || sub.subZonalHeadId === areaEmail)
+      .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))[0];
+    
+    if (!latestLog) return { color: '#DC2626', bg: '#FEE2E2', label: 'Not Done' };
+    
+    const logDate = new Date(latestLog.createdAt || latestLog.date).toDateString();
+    const todayDate = new Date().toDateString();
+    
+    if (logDate !== todayDate) return { color: '#DC2626', bg: '#FEE2E2', label: 'Not Done' };
+    if (latestLog.approved) return { color: '#1A8C4E', bg: '#D1FAE5', label: 'Fully Completed' };
+    return { color: '#D97706', bg: '#FEF3C7', label: 'Pending Review' };
+  };
+
+  const handleGenerateReport = async () => {
+    if (!reportComments.trim()) {
+      Alert.alert('Required', 'Please add overall comments for this report.');
+      return;
+    }
+    setIsSubmitting(true);
+    const success = await submitZonalReport(myZoneName, reportComments);
+    setIsSubmitting(false);
+    if (success) {
+      Alert.alert('Success', 'Zonal Report submitted to Admin.');
+      setReportModalVisible(false);
+      setReportComments('');
+    } else {
+      Alert.alert('Error', 'Failed to submit report. Please try again.');
+    }
   };
 
   return (
@@ -39,7 +67,21 @@ export default function ZonalHome({ onSelectSubZone }) {
         <Text style={styles.emptyText}>No floor areas found for this zone.</Text>
       ) : (
         uniqueAreas.map((areaData, index) => {
-          const status = getMockStatus(index);
+          const status = getLiveStatus(areaData.id, areaData.email);
+          
+          // Get the latest log time if available for this specific area
+          const areaLatestLog = db.checklistSubmissions
+            .filter(sub => sub.subZonalHeadId === areaData.id || sub.subZonalHeadId === areaData.email)
+            .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))[0];
+          
+          let displayTime = 'No data';
+          if (areaLatestLog) {
+            const dateObj = new Date(areaLatestLog.createdAt || areaLatestLog.date);
+            displayTime = dateObj.toLocaleDateString() === new Date().toLocaleDateString() 
+              ? `Today, ${dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` 
+              : dateObj.toLocaleDateString();
+          }
+
           return (
             <TouchableOpacity 
               key={areaData.id} 
@@ -55,12 +97,55 @@ export default function ZonalHome({ onSelectSubZone }) {
               <Text style={styles.areasText} numberOfLines={2}>Coordinator: {areaData.name}</Text>
               <View style={styles.timeRow}>
                 <Ionicons name="time-outline" size={14} color="#6B7280" />
-                <Text style={styles.timeText}>Last updated: Today, 10:{30 + index} AM</Text>
+                <Text style={styles.timeText}>Last updated: {displayTime}</Text>
               </View>
             </TouchableOpacity>
           );
         })
       )}
+
+      {/* Floating Action Button */}
+      <TouchableOpacity style={styles.fab} onPress={() => setReportModalVisible(true)}>
+        <Ionicons name="document-text" size={24} color="#FFF" />
+        <Text style={styles.fabText}>Generate Report</Text>
+      </TouchableOpacity>
+
+      {/* Report Modal */}
+      <Modal visible={reportModalVisible} animationType="slide" transparent={true} onRequestClose={() => setReportModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Finalize Zonal Report</Text>
+              <TouchableOpacity onPress={() => setReportModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalLabel}>Overall Zone Comments</Text>
+            <TextInput
+              style={styles.textArea}
+              placeholder="Enter overall comments for the Admin..."
+              placeholderTextColor="#9CA3AF"
+              multiline={true}
+              numberOfLines={4}
+              value={reportComments}
+              onChangeText={setReportComments}
+            />
+
+            <TouchableOpacity 
+              style={[styles.submitBtn, isSubmitting && { opacity: 0.7 }]} 
+              onPress={handleGenerateReport} 
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.submitBtnText}>Submit to Admin</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -78,5 +163,15 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 12, fontWeight: 'bold' },
   areasText: { fontSize: 13, color: '#4B5563', marginBottom: 12, lineHeight: 18 },
   timeRow: { flexDirection: 'row', alignItems: 'center' },
-  timeText: { fontSize: 12, color: '#6B7280', marginLeft: 4 }
+  timeText: { fontSize: 12, color: '#6B7280', marginLeft: 4 },
+  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: '#8C1B2F', paddingVertical: 14, paddingHorizontal: 20, borderRadius: 30, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 6 },
+  fabText: { color: '#FFF', fontWeight: 'bold', fontSize: 16, marginLeft: 8 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, minHeight: 300 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#111827' },
+  modalLabel: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
+  textArea: { backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 12, minHeight: 100, textAlignVertical: 'top', color: '#111827', marginBottom: 20 },
+  submitBtn: { backgroundColor: '#8C1B2F', padding: 16, borderRadius: 12, alignItems: 'center' },
+  submitBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
 });
