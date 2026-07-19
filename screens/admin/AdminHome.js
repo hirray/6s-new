@@ -60,9 +60,6 @@ const AnimatedMarker = ({ marker, onPress }) => {
   );
 };
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 const FloatingZonePopup = ({ selectedZone, onClose }) => {
   if (!selectedZone) return null;
@@ -207,7 +204,7 @@ export default function AdminHome({ onNavigate }) {
     >
       {/* Custom Maroon Header */}
       <View style={styles.maroonHeader}>
-        <Text style={styles.maroonHeaderTitle}>Admin Dashboard</Text>
+        <Text style={styles.maroonHeaderTitle}>6S Admin</Text>
         <TouchableOpacity onPress={() => onNavigate && onNavigate('Profile')}>
           <Ionicons name="person-circle" size={32} color="#FFFFFF" />
         </TouchableOpacity>
@@ -220,7 +217,7 @@ export default function AdminHome({ onNavigate }) {
           <Text style={styles.pageSubtitle}>University Compliance Overview</Text>
         </View>
         <View style={styles.illustrationContainer}>
-          <Image source={require('../../6S logo.jpeg')} style={[styles.illustration, { borderRadius: 60 }]} resizeMode="contain" />
+          <Image source={require('../../sixs_logo.jpeg')} style={[styles.illustration, { borderRadius: 40 }]} resizeMode="contain" />
         </View>
       </View>
 
@@ -314,8 +311,8 @@ const styles = StyleSheet.create({
   logo: { height: 50, width: 160 },
   titleSection: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 },
   titleTextContainer: { flex: 1, paddingRight: 10, zIndex: 2 },
-  illustrationContainer: { width: 140, height: 140, backgroundColor: '#FFFFFF', borderRadius: 70, justifyContent: 'center', alignItems: 'center', zIndex: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
-  illustration: { width: 120, height: 120 },
+  illustrationContainer: { width: 100, height: 100, backgroundColor: '#FFFFFF', borderRadius: 50, justifyContent: 'center', alignItems: 'center', zIndex: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
+  illustration: { width: 80, height: 80 },
   pageTitle: { fontSize: 28, fontWeight: '900', color: '#6E2A36', letterSpacing: -0.5 },
   pageSubtitle: { fontSize: 15, color: '#6B7280', marginTop: 2 },
   

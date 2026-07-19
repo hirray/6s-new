@@ -2,7 +2,7 @@ import React, { useContext } from 'react';
 import { DataContext } from '../../context/DataContext';
 import ProfileLayout, { ProfileCard, ProfileRow } from '../../components/ProfileLayout';
 
-export default function AdminProfile() {
+export default function AdminProfile({ onNavigate }) {
   const { currentUser, logout } = useContext(DataContext);
   const data = currentUser?.data;
 
@@ -11,6 +11,7 @@ export default function AdminProfile() {
       name={currentUser?.name}
       role="System Administrator"
       onLogout={logout}
+      onNavigate={onNavigate}
     >
       <ProfileCard title="Contact Info">
         <ProfileRow label="Email:" value={data?.email || currentUser?.email || 'admin@gsfc.edu'} />

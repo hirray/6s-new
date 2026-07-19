@@ -15,10 +15,10 @@ export default function AdminMain() {
   const renderContent = () => {
     switch(activeTab) {
       case 'Home': return <AdminHome onNavigate={setActiveTab} />;
-      case 'Zones': return <AdminZones />;
-      case 'Advisory': return <AdminAdvisories />;
-      case 'Analytics': return <AdminAnalytics />;
-      case 'Profile': return <AdminProfile />;
+      case 'Zones': return <AdminZones onNavigate={setActiveTab} />;
+      case 'Advisory': return <AdminAdvisories onNavigate={setActiveTab} />;
+      case 'Analytics': return <AdminAnalytics onNavigate={setActiveTab} />;
+      case 'Profile': return <AdminProfile onNavigate={setActiveTab} />;
       default: return <AdminHome onNavigate={setActiveTab} />;
     }
   };

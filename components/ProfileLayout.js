@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
@@ -12,9 +13,10 @@ const { width } = Dimensions.get('window');
  * @param {Function} onLogout - Callback for log out button
  * @param {React.ReactNode} children - Role-specific cards and content
  */
-export default function ProfileLayout({ name, role, onLogout, children }) {
+export default function ProfileLayout({ name, role, onLogout, children, onNavigate }) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Single Color Background is handled by container style */}
 
       <ScrollView 
@@ -23,6 +25,11 @@ export default function ProfileLayout({ name, role, onLogout, children }) {
       >
         {/* Avatar and Basic Info */}
         <View style={styles.profileHeader}>
+          {onNavigate && (
+            <TouchableOpacity onPress={() => onNavigate('Home')} style={{position: 'absolute', top: 0, left: 0}}>
+              <Ionicons name="arrow-back" size={28} color="#FFFFFF" />
+            </TouchableOpacity>
+          )}
           <View style={styles.avatarContainer}>
             <View style={styles.avatarInner}>
               <Ionicons name="person" size={56} color="#8C1B2F" />

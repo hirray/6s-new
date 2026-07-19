@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "temp_expo",
+    "name": "6S",
     "slug": "temp_expo",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./GSFC_6S_512x512.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
     },
     "android": {
-      "package": "com.radiogsfc.temp_expo",
+      "package": "com.gsfcu.SixS",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/icon.png"
+        "foregroundImage": "./GSFC_6S_512x512.png"
       }
     },
     "web": {

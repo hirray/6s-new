@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:659444199187:android:5b21851900c306f73af4e6",
         "android_client_info": {
-          "package_name": "com.radiogsfc.temp_expo"
+          "package_name": "com.gsfcu.SixS"
         }
       },
       "oauth_client": [
@@ -17,7 +17,7 @@
           "client_id": "659444199187-tm94o5uc9lodcco7reveg7fvdqulm5df.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.radiogsfc.temp_expo",
+            "package_name": "com.gsfcu.SixS",
             "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
           }
         },

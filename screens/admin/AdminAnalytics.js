@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default function AdminAnalytics() {
+export default function AdminAnalytics({ onNavigate }) {
   const { db, zones } = useContext(DataContext);
   const insets = useSafeAreaInsets();
 
@@ -18,18 +18,47 @@ export default function AdminAnalytics() {
   const buildingScores = {};
   db.checklistSubmissions.forEach(sub => {
     if (!buildingScores[sub.zone]) {
-      buildingScores[sub.zone] = { total: 0, count: 0 };
+      buildingScores[sub.zone] = { total: 0, count: 0, sScores: { '1S':0, '2S':0, '3S':0, '4S':0, '5S':0, '6S':0 } };
     }
     buildingScores[sub.zone].total += sub.score;
     buildingScores[sub.zone].count += 1;
+    
+    // Accumulate individual 'S' scores if available from backend, otherwise fallback to overall score
+    ['1S', '2S', '3S', '4S', '5S', '6S'].forEach(s => {
+      buildingScores[sub.zone].sScores[s] += (sub.scores && sub.scores[s]) ? sub.scores[s] : sub.score;
+    });
   });
 
-  const buildingRankings = Object.keys(buildingScores).map(zoneId => {
-    const avg = Math.round(buildingScores[zoneId].total / buildingScores[zoneId].count);
-    const zInfo = zones.find(z => z.id === zoneId.toString());
-    let name = zInfo ? zInfo.name.split('–')[1]?.trim() || zInfo.name : `Zone ${zoneId}`;
+  const buildingRankings = zones.map(z => {
+    // Attempt to find the zone's score in buildingScores
+    const scoreData = buildingScores[z.id] || buildingScores[z.name] || buildingScores[`Zone ${z.id}`];
+    
+    let avg = 0;
+    let sAvg = { '1S':0, '2S':0, '3S':0, '4S':0, '5S':0, '6S':0 };
+    
+    if (scoreData) {
+      avg = Math.round(scoreData.total / scoreData.count);
+      ['1S', '2S', '3S', '4S', '5S', '6S'].forEach(s => {
+        sAvg[s] = Math.round(scoreData.sScores[s] / scoreData.count);
+      });
+    } else {
+      // Fallback: search for any key that contains the zone ID
+      const matchingKey = Object.keys(buildingScores).find(key => {
+        const match = key.match(/Zone\s*0?(\d+)/i) || key.match(/^(\d+)$/);
+        return match && match[1] === z.id;
+      });
+      if (matchingKey) {
+        avg = Math.round(buildingScores[matchingKey].total / buildingScores[matchingKey].count);
+        ['1S', '2S', '3S', '4S', '5S', '6S'].forEach(s => {
+          sAvg[s] = Math.round(buildingScores[matchingKey].sScores[s] / buildingScores[matchingKey].count);
+        });
+      }
+    }
+
+    let name = z.name.replace(/Zone \d+ [-–]\s*/, '');
     if (name.length > 15) name = name.substring(0, 15) + '...'; // Keep it short for UI
-    return { name, score: avg };
+    
+    return { name, score: avg, sAvg };
   }).sort((a,b) => b.score - a.score);
 
   const displayRankings = buildingRankings.length > 0 ? buildingRankings.slice(0, 5) : [
@@ -78,7 +107,20 @@ export default function AdminAnalytics() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
     <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
       <View style={styles.header}>
-        <Text style={styles.title}>Analytics</Text>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => onNavigate && onNavigate('Home')}>
+            <Ionicons name="arrow-back" size={24} color="#8C1B2F" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Analytics</Text>
+          <TouchableOpacity style={{ position: 'relative' }} onPress={() => alert('No new notifications')}>
+            <Ionicons name="notifications-outline" size={24} color="#8C1B2F" />
+            {pendingComplaints > 0 && (
+              <View style={{ position: 'absolute', right: -4, top: -4, backgroundColor: '#EF4444', width: 14, height: 14, borderRadius: 7, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ color: '#FFF', fontSize: 8, fontWeight: 'bold' }}>{pendingComplaints}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Compliance Trend Chart */}
@@ -117,15 +159,33 @@ export default function AdminAnalytics() {
         ))}
       </View>
 
-      {/* 6S Performance */}
+      {/* 6S Performance Table */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>6S Average Performance</Text>
-        <PerformanceRow name="Seiri (Sort)" score={overallScore > 0 ? Math.min(100, overallScore + 3) : 0} />
-        <PerformanceRow name="Seiton (Set In Order)" score={overallScore > 0 ? Math.max(0, overallScore - 5) : 0} color="#F59E0B" />
-        <PerformanceRow name="Seiso (Shine)" score={overallScore > 0 ? Math.min(100, overallScore + 2) : 0} />
-        <PerformanceRow name="Seiketsu (Standardize)" score={overallScore > 0 ? Math.max(0, overallScore - 2) : 0} />
-        <PerformanceRow name="Shitsuke (Sustain)" score={overallScore > 0 ? Math.max(0, overallScore - 4) : 0} color="#F59E0B" />
-        <PerformanceRow name="Safety (Safety)" score={overallScore > 0 ? Math.min(100, overallScore + 1) : 0} />
+        <Text style={styles.cardTitle}>6S Performance by Zone</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View>
+            <View style={[styles.tableRow, styles.tableHeader]}>
+              <Text style={[styles.tableCell, styles.tableCellHeader, { width: 100, textAlign: 'left' }]}>Zone</Text>
+              {['1S', '2S', '3S', '4S', '5S', '6S'].map(s => (
+                <Text key={s} style={[styles.tableCell, styles.tableCellHeader, { width: 45 }]}>{s}</Text>
+              ))}
+            </View>
+            {buildingRankings.map((b, idx) => (
+              <View key={idx} style={styles.tableRow}>
+                <Text style={[styles.tableCell, { width: 100, textAlign: 'left', fontWeight: '500' }]} numberOfLines={1}>{b.name}</Text>
+                <Text style={[styles.tableCell, { width: 45, color: b.sAvg['1S'] >= 85 ? '#10B981' : b.sAvg['1S'] >= 60 ? '#F59E0B' : '#EF4444' }]}>{b.sAvg['1S']}</Text>
+                <Text style={[styles.tableCell, { width: 45, color: b.sAvg['2S'] >= 85 ? '#10B981' : b.sAvg['2S'] >= 60 ? '#F59E0B' : '#EF4444' }]}>{b.sAvg['2S']}</Text>
+                <Text style={[styles.tableCell, { width: 45, color: b.sAvg['3S'] >= 85 ? '#10B981' : b.sAvg['3S'] >= 60 ? '#F59E0B' : '#EF4444' }]}>{b.sAvg['3S']}</Text>
+                <Text style={[styles.tableCell, { width: 45, color: b.sAvg['4S'] >= 85 ? '#10B981' : b.sAvg['4S'] >= 60 ? '#F59E0B' : '#EF4444' }]}>{b.sAvg['4S']}</Text>
+                <Text style={[styles.tableCell, { width: 45, color: b.sAvg['5S'] >= 85 ? '#10B981' : b.sAvg['5S'] >= 60 ? '#F59E0B' : '#EF4444' }]}>{b.sAvg['5S']}</Text>
+                <Text style={[styles.tableCell, { width: 45, color: b.sAvg['6S'] >= 85 ? '#10B981' : b.sAvg['6S'] >= 60 ? '#F59E0B' : '#EF4444' }]}>{b.sAvg['6S']}</Text>
+              </View>
+            ))}
+            {buildingRankings.length === 0 && (
+              <Text style={{ textAlign: 'center', color: '#6B7280', padding: 20 }}>No data available</Text>
+            )}
+          </View>
+        </ScrollView>
       </View>
     </ScrollView>
     </View>
@@ -160,7 +220,7 @@ const PerformanceRow = ({name, score, color = '#10B981'}) => (
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAF8', paddingHorizontal: 20 },
-  header: { paddingTop: 50, paddingBottom: 20 },
+  header: { paddingTop: 10, paddingBottom: 20 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: 28, fontWeight: 'bold', color: '#8C1B2F' },
   card: { backgroundColor: '#FFFFFF', padding: 20, borderRadius: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: '#F3F4F6' },
@@ -182,5 +242,9 @@ const styles = StyleSheet.create({
   rankingScore: { fontSize: 13, fontWeight: 'bold', color: '#111827', width: 35, textAlign: 'right' },
   perfRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 8 },
   perfName: { width: 140, fontSize: 12, fontWeight: '600', color: '#4B5563' },
-  perfScore: { fontSize: 12, fontWeight: 'bold', color: '#111827', width: 30, textAlign: 'right' }
+  perfScore: { fontSize: 12, fontWeight: 'bold', color: '#111827', width: 30, textAlign: 'right' },
+  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', paddingVertical: 12, alignItems: 'center' },
+  tableHeader: { borderTopWidth: 1, borderTopColor: '#F3F4F6' },
+  tableCell: { fontSize: 13, color: '#374151', textAlign: 'center' },
+  tableCellHeader: { fontWeight: 'bold', color: '#6B7280', fontSize: 11, textTransform: 'uppercase' }
 });

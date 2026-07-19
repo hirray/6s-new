@@ -162,6 +162,36 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  const addHead = async (type, data) => {
+    try {
+      const endpoint = type === 'zonal' ? 'zonalheads' : 'subzonalheads';
+      const res = await axios.post(`${API_URL}/data/${endpoint}`, data);
+      setStaticData(prev => ({
+        ...prev,
+        [type === 'zonal' ? 'zonalHeads' : 'subZonalHeads']: [...prev[type === 'zonal' ? 'zonalHeads' : 'subZonalHeads'], res.data]
+      }));
+      return { success: true };
+    } catch (error) {
+      console.error(`Error adding ${type} head`, error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const removeHead = async (type, id) => {
+    try {
+      const endpoint = type === 'zonal' ? 'zonalheads' : 'subzonalheads';
+      await axios.delete(`${API_URL}/data/${endpoint}/${id}`);
+      setStaticData(prev => ({
+        ...prev,
+        [type === 'zonal' ? 'zonalHeads' : 'subZonalHeads']: prev[type === 'zonal' ? 'zonalHeads' : 'subZonalHeads'].filter(h => h._id !== id)
+      }));
+      return { success: true };
+    } catch (error) {
+      console.error(`Error removing ${type} head`, error);
+      return { success: false, error: error.message };
+    }
+  };
+
   const addAdvisoryReply = async (advisoryId, replyText) => {
     try {
       const res = await axios.post(`${API_URL}/advisories/${advisoryId}/reply`, {
@@ -255,7 +285,9 @@ export const DataProvider = ({ children }) => {
       submitChecklist,
       updateZoneScore,
       addAdvisoryReply,
-      staticData
+      staticData,
+      addHead,
+      removeHead
     }}>
       {children}
     </DataContext.Provider>

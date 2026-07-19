@@ -2,17 +2,16 @@ import React, { useState, useContext } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as XLSX from 'xlsx';
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
-export default function AdminZones() {
+export default function AdminZones({ onNavigate }) {
   const { db, staticData, zones } = useContext(DataContext);
+  const insets = useSafeAreaInsets();
   const [expandedZone, setExpandedZone] = useState('1');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedSubZone, setExpandedSubZone] = useState(null);
@@ -151,7 +150,9 @@ export default function AdminZones() {
       `;
 
       const { uri } = await Print.printToFileAsync({ html: htmlContent });
-      await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+      const newUri = FileSystem.documentDirectory + `report_${Date.now()}.pdf`;
+      await FileSystem.moveAsync({ from: uri, to: newUri });
+      await shareAsync(newUri, { UTI: '.pdf', mimeType: 'application/pdf' });
     } catch (err) {
       console.error(err);
       alert('Failed to generate PDF report.');
@@ -180,7 +181,7 @@ export default function AdminZones() {
       XLSX.utils.book_append_sheet(wb, ws, "Zone Report");
 
       const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
-      const uri = FileSystem.cacheDirectory + `${zone.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_report.xlsx`;
+      const uri = FileSystem.documentDirectory + `${zone.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_report.xlsx`;
       
       await FileSystem.writeAsStringAsync(uri, wbout, {
         encoding: FileSystem.EncodingType.Base64
@@ -286,9 +287,14 @@ export default function AdminZones() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Concerns</Text>
+        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+          <TouchableOpacity onPress={() => onNavigate && onNavigate('Home')} style={{marginRight: 10}}>
+            <Ionicons name="arrow-back" size={24} color="#8C1B2F" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Concerns</Text>
+        </View>
       </View>
 
       <View style={styles.searchContainer}>
@@ -323,11 +329,11 @@ export default function AdminZones() {
                     <Text style={styles.exportLabel}>Export:</Text>
                     <TouchableOpacity style={styles.exportBtnPdf} onPress={() => exportPdf(zone)}>
                       <Ionicons name="document-text" size={16} color="#FFF" />
-                      <Text style={styles.exportBtnText}>PDF Report</Text>
+                      <Text style={styles.exportBtnText}>PDF</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.exportBtnExcel} onPress={() => exportExcel(zone)}>
                       <Ionicons name="grid" size={16} color="#FFF" />
-                      <Text style={styles.exportBtnText}>Excel Report</Text>
+                      <Text style={styles.exportBtnText}>Excel</Text>
                     </TouchableOpacity>
                   </View>
 
@@ -373,7 +379,7 @@ export default function AdminZones() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAF8' },
-  header: { marginBottom: 20, paddingHorizontal: 20, paddingTop: 50 },
+  header: { marginBottom: 20, paddingHorizontal: 20, paddingTop: 10 },
   title: { fontSize: 28, fontWeight: 'bold', color: '#8C1B2F' },
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', marginHorizontal: 20, paddingHorizontal: 16, height: 50, borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, marginBottom: 20, borderWidth: 1, borderColor: '#F3F4F6' },
   searchIcon: { marginRight: 10 },
@@ -386,7 +392,7 @@ const styles = StyleSheet.create({
   accordionBody: { paddingHorizontal: 16, paddingBottom: 16 },
   tableHeaderRow: { flexDirection: 'row', marginBottom: 12 },
   thEmpty: { flex: 1 },
-  exportBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, paddingHorizontal: 5 },
+  exportBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, paddingHorizontal: 5, flexWrap: 'wrap' },
   exportLabel: { fontSize: 14, fontWeight: 'bold', color: '#4B5563', marginRight: 10 },
   exportBtnPdf: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E11D48', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, marginRight: 10 },
   exportBtnExcel: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#059669', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },

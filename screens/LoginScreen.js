@@ -266,37 +266,24 @@ export default function LoginScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                <View style={styles.dividerContainer}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>Quick Dev Login</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                {/* Direct Logins */}
-                <View style={{ marginTop: 10 }}>
-                  <TouchableOpacity 
-                    onPress={() => handleLogin('admin', 'admin')} 
-                    style={{ padding: 12, backgroundColor: '#EFEFEF', borderRadius: 8, marginBottom: 8 }}>
-                    <Text style={{ textAlign: 'center', color: '#333', fontSize: 13, fontWeight: 'bold' }}>Quick: Admin</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    onPress={() => handleLogin('student', 'student')} 
-                    style={{ padding: 12, backgroundColor: '#EFEFEF', borderRadius: 8, marginBottom: 8 }}>
-                    <Text style={{ textAlign: 'center', color: '#333', fontSize: 13, fontWeight: 'bold' }}>Quick: Student</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    onPress={() => handleLogin('dulari.raj@gsfcuniversity.ac.in', '1234')} 
-                    style={{ padding: 12, backgroundColor: '#EFEFEF', borderRadius: 8, marginBottom: 8 }}>
-                    <Text style={{ textAlign: 'center', color: '#333', fontSize: 13, fontWeight: 'bold' }}>Quick: Sub-Zonal (Dulari)</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    onPress={() => handleLogin('devjani.banerjee@gsfcuniversity.ac.in', '1234')} 
-                    style={{ padding: 12, backgroundColor: '#EFEFEF', borderRadius: 8 }}>
-                    <Text style={{ textAlign: 'center', color: '#333', fontSize: 13, fontWeight: 'bold' }}>Quick: Zonal Head (Devjani)</Text>
-                  </TouchableOpacity>
-                </View>
-
                 <View style={{ height: 20 }} />
+
+                {/* Quick Login Buttons */}
+                <Text style={{textAlign: 'center', color: '#999', marginBottom: 10, fontSize: 12}}>Quick Login for Testing</Text>
+                <View style={styles.quickLoginContainer}>
+                  <TouchableOpacity style={styles.quickLoginBtn} onPress={() => handleLogin('admin', 'admin')}>
+                    <Text style={styles.quickLoginText}>Admin</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.quickLoginBtn} onPress={() => handleLogin('zone1', 'zone1')}>
+                    <Text style={styles.quickLoginText}>Zonal Head</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.quickLoginBtn} onPress={() => handleLogin('subzone', 'subzone')}>
+                    <Text style={styles.quickLoginText}>Sub-Zonal</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.quickLoginBtn} onPress={() => handleLogin('student', 'student')}>
+                    <Text style={styles.quickLoginText}>Student</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
 
@@ -336,7 +323,7 @@ export default function LoginScreen() {
         {/* Spacer */}
         <View style={{ height: 20 }} />
 
-        {/* Google login temporarily disabled
+        {/* Google login */}
         <View style={styles.dividerContainer}>
           <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>or</Text>
@@ -349,7 +336,6 @@ export default function LoginScreen() {
             style={{ width: 24, height: 24 }} 
           />
         </TouchableOpacity>
-        */}
 
       </View>
 
@@ -535,6 +521,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 20,
+  },
+  quickLoginContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  quickLoginBtn: {
+    backgroundColor: '#F3E9DD',
+    width: '48%',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E8D5D8'
+  },
+  quickLoginText: {
+    color: '#6E2A36',
+    fontWeight: 'bold',
+    fontSize: 12
   },
   floatingButton: {
     backgroundColor: '#6E2A36',
