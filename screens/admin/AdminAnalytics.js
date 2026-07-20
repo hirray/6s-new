@@ -118,18 +118,10 @@ export default function AdminAnalytics({ onNavigate }) {
     >
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => onNavigate && onNavigate('Home')}>
+          <TouchableOpacity onPress={() => onNavigate && onNavigate('Home')} style={{ marginRight: 16 }}>
             <Ionicons name="arrow-back" size={24} color="#8C1B2F" />
           </TouchableOpacity>
           <Text style={styles.title}>Analytics</Text>
-          <TouchableOpacity style={{ position: 'relative' }} onPress={() => alert('No new notifications')}>
-            <Ionicons name="notifications-outline" size={24} color="#8C1B2F" />
-            {pendingComplaints > 0 && (
-              <View style={{ position: 'absolute', right: -4, top: -4, backgroundColor: '#EF4444', width: 14, height: 14, borderRadius: 7, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ color: '#FFF', fontSize: 8, fontWeight: 'bold' }}>{pendingComplaints}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -257,7 +249,7 @@ const PerformanceRow = ({name, score, color = '#10B981'}) => (
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAF8', paddingHorizontal: 20 },
   header: { paddingTop: 10, paddingBottom: 20 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerRow: { flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' },
   title: { fontSize: 28, fontWeight: 'bold', color: '#8C1B2F' },
   card: { backgroundColor: '#FFFFFF', padding: 20, borderRadius: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: '#F3F4F6' },
   cardTitleRow: { flexDirection: 'row', alignItems: 'baseline' },

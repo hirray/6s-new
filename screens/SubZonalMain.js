@@ -33,7 +33,7 @@ export default function SubZonalMain() {
           tabs={[
             { key: 'Home', icon: 'home-outline', activeIcon: 'home', label: 'Home' },
             { key: 'Concerns', icon: 'alert-circle-outline', activeIcon: 'alert-circle', label: 'Concerns' },
-            { key: 'History', icon: 'calendar-outline', activeIcon: 'calendar', label: 'History' },
+            { key: 'History', icon: 'megaphone-outline', activeIcon: 'megaphone', label: 'Advisories' },
             { key: 'Profile', icon: 'person-outline', activeIcon: 'person', label: 'Profile' }
           ]}
           activeTab={activeTab}

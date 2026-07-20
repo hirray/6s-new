@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { DataContext } from '../context/DataContext';
 
 export default function SubZonalAudit() {
-  const { currentUser, CL_TASKS, db, setDb, resolveComplaint } = useContext(DataContext);
+  const { currentUser, CL_TASKS, db, setDb, resolveComplaint, submitChecklist } = useContext(DataContext);
   const [checkedItems, setCheckedItems] = useState([]);
   
   const [resolutions, setResolutions] = useState({});
@@ -49,28 +49,34 @@ export default function SubZonalAudit() {
 
   const progressPercentage = Math.round((checkedItems.length / CL_TASKS.length) * 100);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (checkedItems.length === 0) {
       Alert.alert('Incomplete', 'Please check at least one inspection item.');
       return;
     }
 
-    const newSubmission = {
-      id: Date.now().toString(),
-      subZonalHeadId: currentUser?.id,
-      zone: myZone,
-      score: progressPercentage,
-      date: new Date().toLocaleString()
-    };
+    await submitChecklist(currentUser?.id, myZone, progressPercentage, []);
 
-    setDb(prev => ({
-      ...prev,
-      checklistSubmissions: [newSubmission, ...prev.checklistSubmissions]
-    }));
-
-    Alert.alert('Audit Submitted', `Daily inspection complete. Score: ${progressPercentage}%`);
+    Alert.alert('Sent for Approval', `Daily inspection submitted for Zonal Head approval. Score: ${progressPercentage}%. You will be able to submit again in 48 hours.`);
     setCheckedItems([]);
   };
+
+  const mySubmissions = db.checklistSubmissions
+    .filter(s => s.subZonalHeadId === currentUser?.id)
+    .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+  
+  const lastSub = mySubmissions[0];
+  let isGreen = false;
+  let formattedLastSubDate = '';
+
+  if (lastSub) {
+    const lastSubDate = new Date(lastSub.date || lastSub.createdAt);
+    const hoursSince = (new Date() - lastSubDate) / (1000 * 60 * 60);
+    if (hoursSince <= 48) {
+      isGreen = true;
+      formattedLastSubDate = lastSubDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' IST';
+    }
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -96,32 +102,46 @@ export default function SubZonalAudit() {
           </View>
         </View>
 
-        {/* 8-Item Checklist */}
-        <View style={styles.checklistContainer}>
-          {CL_TASKS.map((task, index) => {
-            const isChecked = checkedItems.includes(index);
-            return (
-              <TouchableOpacity 
-                key={index} 
-                style={[styles.checklistItem, isChecked && styles.checklistItemActive]}
-                onPress={() => toggleCheck(index)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.checkbox, isChecked && styles.checkboxActive]}>
-                  {isChecked && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
-                </View>
-                <Text style={[styles.checklistText, isChecked && styles.checklistTextActive]}>{task}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        {/* 8-Item Checklist or Block Message */}
+        {isGreen ? (
+          <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name="checkmark-circle" size={40} color="#10B981" />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#111827', marginBottom: 8 }}>Inspection Up to Date</Text>
+            <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center' }}>
+              Work already done at {formattedLastSubDate}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.checklistContainer}>
+            {CL_TASKS.map((task, index) => {
+              const isChecked = checkedItems.includes(index);
+              return (
+                <TouchableOpacity 
+                  key={index} 
+                  style={[styles.checklistItem, isChecked && styles.checklistItemActive]}
+                  onPress={() => toggleCheck(index)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.checkbox, isChecked && styles.checkboxActive]}>
+                    {isChecked && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+                  </View>
+                  <Text style={[styles.checklistText, isChecked && styles.checklistTextActive]}>{task}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
-        <TouchableOpacity 
-          style={[styles.primaryButton, checkedItems.length === 0 && { opacity: 0.6 }]} 
-          onPress={handleSubmit}
-        >
-          <Text style={styles.primaryButtonText}>Submit Daily Log</Text>
-        </TouchableOpacity>
+        {!isGreen && (
+          <TouchableOpacity 
+            style={[styles.primaryButton, checkedItems.length === 0 && { opacity: 0.6 }]} 
+            onPress={handleSubmit}
+          >
+            <Text style={styles.primaryButtonText}>Send for Approval</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Floor Concerns (Card 3) */}

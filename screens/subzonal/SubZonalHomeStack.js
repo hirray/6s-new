@@ -94,7 +94,7 @@ export default function SubZonalHomeStack() {
     }
 
     if (isAutoSubmit !== true) {
-      Alert.alert('Audit Submitted', 'Your 6S audit has been successfully submitted.');
+      Alert.alert('Sent for Approval', 'Your 6S audit has been submitted to the Zonal Head. You will be able to submit again in 48 hours.');
     }
   };
 

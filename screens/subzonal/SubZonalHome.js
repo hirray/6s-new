@@ -8,11 +8,32 @@ export default function SubZonalHome({ onSelectCategory, checklistProgress = {},
   
   const zoneSub = currentUser?.data?.zone || currentUser?.zone;
   
-  const relevantAdvisories = db.advisories.filter(a => {
-    if (a.targetZone === 'All Zones') return true;
-    if (zoneSub && a.targetZone && a.targetZone.startsWith(zoneSub)) return true;
-    return false;
-  }).sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+  const mySubmissions = db.checklistSubmissions
+    .filter(s => s.subZonalHeadId === currentUser?.id)
+    .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+  
+  const lastSub = mySubmissions[0];
+  let status = 'Red';
+  let hoursSinceLastSub = Infinity;
+  
+  if (lastSub) {
+    const lastSubDate = new Date(lastSub.date || lastSub.createdAt);
+    const now = new Date();
+    hoursSinceLastSub = (now - lastSubDate) / (1000 * 60 * 60);
+    if (hoursSinceLastSub <= 48) status = 'Green';
+    else if (hoursSinceLastSub <= 72) status = 'Yellow';
+    else status = 'Red';
+  }
+  
+  const formattedLastSubDate = lastSub ? new Date(lastSub.date || lastSub.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' IST' : '';
+
+  const getStatusColor = (s) => {
+    if (s === 'Green') return '#10B981';
+    if (s === 'Yellow') return '#F59E0B';
+    return '#EF4444';
+  };
+  
+  const statusColor = getStatusColor(status);
   
   const completedTasks = Object.keys(checklistProgress).length;
   const totalTasks = 6;
@@ -42,8 +63,8 @@ export default function SubZonalHome({ onSelectCategory, checklistProgress = {},
         imageStyle={{ borderRadius: 24 }}
       >
         <View style={styles.cardOverlay}>
-          <View style={styles.cardBadge}>
-            <Text style={styles.cardBadgeText}>Daily Inspection</Text>
+          <View style={[styles.cardBadge, { backgroundColor: statusColor + '33', borderColor: statusColor }]}>
+            <Text style={[styles.cardBadgeText, { color: statusColor }]}>Status: {status}</Text>
           </View>
           
           <Text style={styles.welcomeBackText}>Welcome Back!</Text>
@@ -73,85 +94,115 @@ export default function SubZonalHome({ onSelectCategory, checklistProgress = {},
         </View>
       </View>
 
-      {/* 6S Grid */}
-      <View style={styles.gridContainer}>
-        {/* Sort */}
-        <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Sort')}>
-          <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Sort'] !== undefined ? '#1A8C4E' : '#1C75FF' }]}>
-             <Ionicons name={checklistProgress['Sort'] !== undefined ? "checkmark-circle" : "layers"} size={28} color="#FFFFFF" />
+      {/* 6S Grid or Block Message */}
+      {status === 'Green' ? (
+        <View style={{ alignItems: 'center', paddingVertical: 40, backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3 }}>
+          <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+            <Ionicons name="checkmark-circle" size={40} color="#10B981" />
           </View>
-          <Text style={styles.gridItemTitle}>Sort</Text>
-          <Text style={styles.gridItemSubtitle}>Seiri</Text>
-          <Text style={styles.gridItemDesc}>Remove unnecessary items</Text>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#111827', marginBottom: 8 }}>Inspection Up to Date</Text>
+          <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', paddingHorizontal: 20 }}>
+            Work already done at {formattedLastSubDate}
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.gridContainer}>
+          {/* Sort */}
+          <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Sort')}>
+            <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Sort'] !== undefined ? '#1A8C4E' : '#1C75FF' }]}>
+               <Ionicons name={checklistProgress['Sort'] !== undefined ? "checkmark-circle" : "layers"} size={28} color="#FFFFFF" />
+            </View>
+            <Text style={styles.gridItemTitle}>Sort</Text>
+            <Text style={styles.gridItemSubtitle}>Seiri</Text>
+            <Text style={styles.gridItemDesc}>Remove unnecessary items</Text>
+          </TouchableOpacity>
+
+          {/* Set In Order */}
+          <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Set In Order')}>
+            <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Set In Order'] !== undefined ? '#1A8C4E' : '#A21CFF' }]}>
+               <Ionicons name={checklistProgress['Set In Order'] !== undefined ? "checkmark-circle" : "grid"} size={28} color="#FFFFFF" />
+            </View>
+            <Text style={styles.gridItemTitle}>Set In Order</Text>
+            <Text style={styles.gridItemSubtitle}>Seiton</Text>
+            <Text style={styles.gridItemDesc}>Organize workspace efficiently</Text>
+          </TouchableOpacity>
+
+          {/* Shine */}
+          <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Shine')}>
+            <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Shine'] !== undefined ? '#1A8C4E' : '#00C3FF' }]}>
+               <Ionicons name={checklistProgress['Shine'] !== undefined ? "checkmark-circle" : "sparkles"} size={28} color="#FFFFFF" />
+            </View>
+            <Text style={styles.gridItemTitle}>Shine</Text>
+            <Text style={styles.gridItemSubtitle}>Seiso</Text>
+            <Text style={styles.gridItemDesc}>Clean & maintain workspace</Text>
+          </TouchableOpacity>
+
+          {/* Standardize */}
+          <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Standardize')}>
+            <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Standardize'] !== undefined ? '#1A8C4E' : '#FF1C75' }]}>
+               <Ionicons name={checklistProgress['Standardize'] !== undefined ? "checkmark-circle" : "document-text"} size={28} color="#FFFFFF" />
+            </View>
+            <Text style={styles.gridItemTitle}>Standardize</Text>
+            <Text style={styles.gridItemSubtitle}>Seiketsu</Text>
+            <Text style={styles.gridItemDesc}>Create uniform procedures</Text>
+          </TouchableOpacity>
+
+          {/* Sustain */}
+          <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Sustain')}>
+            <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Sustain'] !== undefined ? '#1A8C4E' : '#00B94A' }]}>
+               <Ionicons name={checklistProgress['Sustain'] !== undefined ? "checkmark-circle" : "bar-chart"} size={28} color="#FFFFFF" />
+            </View>
+            <Text style={styles.gridItemTitle}>Sustain</Text>
+            <Text style={styles.gridItemSubtitle}>Shitsuke</Text>
+            <Text style={styles.gridItemDesc}>Maintain discipline</Text>
+          </TouchableOpacity>
+
+          {/* Safety */}
+          <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Safety')}>
+            <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Safety'] !== undefined ? '#1A8C4E' : '#FF8800' }]}>
+               <Ionicons name={checklistProgress['Safety'] !== undefined ? "checkmark-circle" : "shield-checkmark"} size={28} color="#FFFFFF" />
+            </View>
+            <Text style={styles.gridItemTitle}>Safety</Text>
+            <Text style={styles.gridItemSubtitle}>Safety</Text>
+            <Text style={styles.gridItemDesc}>Ensure workspace safety</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {status !== 'Green' && completedTasks > 0 && (
+        <TouchableOpacity style={styles.finalSubmitButton} onPress={onFinalSubmit}>
+          <Text style={styles.finalSubmitButtonText}>Send for Approval</Text>
         </TouchableOpacity>
-
-        {/* Set In Order */}
-        <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Set In Order')}>
-          <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Set In Order'] !== undefined ? '#1A8C4E' : '#A21CFF' }]}>
-             <Ionicons name={checklistProgress['Set In Order'] !== undefined ? "checkmark-circle" : "grid"} size={28} color="#FFFFFF" />
-          </View>
-          <Text style={styles.gridItemTitle}>Set In Order</Text>
-          <Text style={styles.gridItemSubtitle}>Seiton</Text>
-          <Text style={styles.gridItemDesc}>Organize workspace efficiently</Text>
-        </TouchableOpacity>
-
-        {/* Shine */}
-        <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Shine')}>
-          <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Shine'] !== undefined ? '#1A8C4E' : '#00C3FF' }]}>
-             <Ionicons name={checklistProgress['Shine'] !== undefined ? "checkmark-circle" : "sparkles"} size={28} color="#FFFFFF" />
-          </View>
-          <Text style={styles.gridItemTitle}>Shine</Text>
-          <Text style={styles.gridItemSubtitle}>Seiso</Text>
-          <Text style={styles.gridItemDesc}>Clean & maintain workspace</Text>
-        </TouchableOpacity>
-
-        {/* Standardize */}
-        <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Standardize')}>
-          <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Standardize'] !== undefined ? '#1A8C4E' : '#FF1C75' }]}>
-             <Ionicons name={checklistProgress['Standardize'] !== undefined ? "checkmark-circle" : "document-text"} size={28} color="#FFFFFF" />
-          </View>
-          <Text style={styles.gridItemTitle}>Standardize</Text>
-          <Text style={styles.gridItemSubtitle}>Seiketsu</Text>
-          <Text style={styles.gridItemDesc}>Create uniform procedures</Text>
-        </TouchableOpacity>
-
-        {/* Sustain */}
-        <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Sustain')}>
-          <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Sustain'] !== undefined ? '#1A8C4E' : '#00B94A' }]}>
-             <Ionicons name={checklistProgress['Sustain'] !== undefined ? "checkmark-circle" : "bar-chart"} size={28} color="#FFFFFF" />
-          </View>
-          <Text style={styles.gridItemTitle}>Sustain</Text>
-          <Text style={styles.gridItemSubtitle}>Shitsuke</Text>
-          <Text style={styles.gridItemDesc}>Maintain discipline</Text>
-        </TouchableOpacity>
-
-        {/* Safety */}
-        <TouchableOpacity style={styles.gridItem} onPress={() => onSelectCategory && onSelectCategory('Safety')}>
-          <View style={[styles.iconContainer, { backgroundColor: checklistProgress['Safety'] !== undefined ? '#1A8C4E' : '#FF8800' }]}>
-             <Ionicons name={checklistProgress['Safety'] !== undefined ? "checkmark-circle" : "shield-checkmark"} size={28} color="#FFFFFF" />
-          </View>
-          <Text style={styles.gridItemTitle}>Safety</Text>
-          <Text style={styles.gridItemSubtitle}>Safety</Text>
-          <Text style={styles.gridItemDesc}>Ensure workspace safety</Text>
-        </TouchableOpacity>
-      </View>
+      )}
 
 
 
-      {/* Advisories */}
+      {/* Audit History */}
       <View style={styles.historySection}>
-        <Text style={styles.historyTitle}>Recent Advisories</Text>
-        {relevantAdvisories.length === 0 ? (
-          <Text style={styles.emptyHistoryText}>No recent advisories for your zone.</Text>
+        <Text style={styles.historyTitle}>Recent Audit History</Text>
+        {mySubmissions.length === 0 ? (
+          <Text style={styles.emptyHistoryText}>No recent audits.</Text>
         ) : (
-          relevantAdvisories.slice(0, 5).map(adv => (
-            <View key={adv.id} style={styles.historyCard}>
-              <View style={[styles.historyIconCircle, { backgroundColor: '#F0F9FF' }]}>
-                <Ionicons name="megaphone" size={20} color="#0284C7" />
+          mySubmissions.map(sub => (
+            <View key={sub.id} style={styles.historyCard}>
+              <View style={[styles.historyIconCircle, { backgroundColor: '#FCE7F3' }]}>
+                <Ionicons name="document-text" size={20} color="#8C1B2F" />
               </View>
               <View style={styles.historyContent}>
-                <Text style={styles.historyDate}>{adv.author} • {adv.date ? adv.date : new Date(adv.createdAt).toLocaleString()}</Text>
-                <Text style={styles.historyScore}>{adv.text}</Text>
+                <Text style={styles.historyDate}>
+                  {new Date(sub.date || sub.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} IST
+                </Text>
+                <Text style={styles.historyScore}>Overall Score: {sub.score}%</Text>
+                {sub.approvedBy ? (
+                  <Text style={[styles.historyScore, { color: '#10B981', fontSize: 11, fontWeight: 'bold' }]}>✓ Approved by {sub.approvedBy}</Text>
+                ) : (
+                  <Text style={[styles.historyScore, { color: '#F59E0B', fontSize: 11, fontStyle: 'italic' }]}>Pending Zonal Approval</Text>
+                )}
+              </View>
+              <View style={[styles.historyBadge, { backgroundColor: sub.score >= 80 ? '#ECFDF5' : (sub.score >= 60 ? '#FFFBEB' : '#FEF2F2') }]}>
+                <Text style={[styles.historyBadgeText, { color: sub.score >= 80 ? '#059669' : (sub.score >= 60 ? '#D97706' : '#DC2626') }]}>
+                  {sub.score >= 80 ? 'Excellent' : (sub.score >= 60 ? 'Good' : 'Needs Action')}
+                </Text>
               </View>
             </View>
           ))

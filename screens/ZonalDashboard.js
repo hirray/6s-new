@@ -104,6 +104,14 @@ export default function ZonalDashboard({ navigation }) {
           
           const baseScore = latestLog ? latestLog.score : 0; 
 
+          let subZoneStatus = 'Red';
+          if (latestLog) {
+            const hoursSince = (new Date() - new Date(latestLog.date || latestLog.createdAt)) / (1000 * 60 * 60);
+            if (hoursSince <= 48) subZoneStatus = 'Green';
+            else if (hoursSince <= 72) subZoneStatus = 'Yellow';
+          }
+          const statusColor = subZoneStatus === 'Green' ? '#10B981' : subZoneStatus === 'Yellow' ? '#F59E0B' : '#EF4444';
+
           // Deterministic 6S Fluctuation
           const getScore = (idx) => {
             if (baseScore === 0) return 0;
@@ -124,7 +132,12 @@ export default function ZonalDashboard({ navigation }) {
 
           return (
             <View key={item.id} style={styles.floorOverviewCard}>
-              <Text style={styles.floorOverviewTitle}>{item.areasCovered}</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 16, marginBottom: 16 }}>
+                <Text style={[styles.floorOverviewTitle, { marginHorizontal: 0, marginBottom: 0 }]}>{item.areasCovered}</Text>
+                <View style={{ backgroundColor: statusColor + '22', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: statusColor }}>
+                  <Text style={{ color: statusColor, fontSize: 10, fontWeight: 'bold' }}>Status: {subZoneStatus}</Text>
+                </View>
+              </View>
               
               <View style={styles.sixSContainer}>
                 {sCategories.map((sCat, idx) => {

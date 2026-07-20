@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
+import { getChecklistForUser } from '../../utils/checklistMapper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
@@ -48,6 +49,13 @@ export default function AdminZones({ onNavigate }) {
         name: szh.name || 'Unassigned'
       };
 
+      let timeStatus = 'Red';
+      if (latestSub) {
+        const hoursSince = (new Date() - new Date(latestSub.date || latestSub.createdAt)) / (1000 * 60 * 60);
+        if (hoursSince <= 48) timeStatus = 'Green';
+        else if (hoursSince <= 72) timeStatus = 'Yellow';
+      }
+
       return {
         id: szh._id || szh.id || Math.random().toString(),
         name: szhFloor,
@@ -57,6 +65,7 @@ export default function AdminZones({ onNavigate }) {
         resolved,
         compliance,
         latestSub,
+        timeStatus,
         fullData: fullDataMapped
       };
     });
@@ -211,12 +220,28 @@ export default function AdminZones({ onNavigate }) {
   };
 
   const renderDetailedChecklist = (sub, principleId) => {
-    // mock real-time checklist items for that principle
-    const items = [
-      `Are standard procedures for ${principleId} visible and followed?`,
-      `Is the team actively engaged in ${principleId} practices?`,
-      `Any immediate hazards identified during ${principleId}?`
-    ];
+    const principleNameMap = {
+      '1S': 'Sort',
+      '2S': 'Set In Order',
+      '3S': 'Shine',
+      '4S': 'Standardize',
+      '5S': 'Sustain',
+      '6S': 'Safety'
+    };
+
+    const principleName = principleNameMap[principleId];
+    
+    // Get real checklist for this user
+    const checklistData = getChecklistForUser(sub.fullData, staticData?.checklists || []);
+    let items = checklistData[principleName] || [];
+
+    // Fallback if no items found
+    if (items.length === 0) {
+      items = [`No specific checklist items defined for ${principleName} in this sub-zone.`];
+    }
+
+    // Determine specific remarks for this subzone submission
+    const submissionRemarks = sub.latestSub?.remarks || [];
 
     // Find if we have complaints for this subzone to provide analysis context
     const analysisContext = sub.pending > 0 
@@ -234,12 +259,21 @@ export default function AdminZones({ onNavigate }) {
         </View>
 
         {items.map((item, idx) => {
-          // just pseudo-randomizing a failure check for realism
-          const isFailed = idx === 2 && sScore < 85;
+          // Check if the item was marked as a concern in the latest submission
+          const failedItem = submissionRemarks.find(r => r.task === item);
+          const isFailed = !!failedItem;
+
           return (
             <View key={idx} style={styles.checklistItemRow}>
               <Ionicons name={isFailed ? "close-circle" : "checkmark-circle"} size={20} color={isFailed ? "#C0182A" : "#1A8C4E"} />
-              <Text style={styles.checklistItemText}>{item}</Text>
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text style={styles.checklistItemText}>{item}</Text>
+                {isFailed && (
+                  <Text style={{ fontSize: 12, color: '#991B1B', marginTop: 4, fontStyle: 'italic' }}>
+                    Remark: {failedItem.comment}
+                  </Text>
+                )}
+              </View>
             </View>
           );
         })}
@@ -346,7 +380,7 @@ export default function AdminZones({ onNavigate }) {
 
                   {zone.subZones.map((sub, sIndex) => {
                     const isSubExpanded = expandedSubZone === sub.id;
-                    const compColor = sub.compliance >= 85 ? '#1A8C4E' : sub.compliance >= 60 ? '#B07D10' : '#C0182A';
+                    const statusColor = sub.timeStatus === 'Green' ? '#10B981' : sub.timeStatus === 'Yellow' ? '#F59E0B' : '#EF4444';
 
                     return (
                       <View key={`sub-${sub.id}-${sIndex}`} style={styles.subZoneWrapper}>
@@ -354,8 +388,13 @@ export default function AdminZones({ onNavigate }) {
                           style={styles.tableRow}
                           onPress={() => toggleSubZone(sub.id)}
                         >
-                          <Text style={[styles.tdLabel, {flex: 2.5}]} numberOfLines={2}>{sub.name}</Text>
-                          <Text style={[styles.tdValue, {color: compColor, fontWeight: 'bold', flex: 1, textAlign: 'right', paddingRight: 10}]}>{sub.compliance}%</Text>
+                          <View style={{ flex: 2.5, flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={styles.tdLabel} numberOfLines={2}>{sub.name}</Text>
+                            <View style={{ backgroundColor: statusColor + '22', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: statusColor, marginLeft: 8 }}>
+                              <Text style={{ color: statusColor, fontSize: 9, fontWeight: 'bold' }}>{sub.timeStatus}</Text>
+                            </View>
+                          </View>
+                          <Text style={[styles.tdValue, {fontWeight: 'bold', flex: 1, textAlign: 'right', paddingRight: 10}]}>{sub.compliance}%</Text>
                           <Ionicons name={isSubExpanded ? "chevron-up" : "chevron-forward"} size={16} color="#111827" />
                         </TouchableOpacity>
 
@@ -415,8 +454,8 @@ const styles = StyleSheet.create({
   checklistHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, alignItems: 'center' },
   checklistTitle: { fontSize: 14, fontWeight: 'bold', color: '#111827' },
   checklistScore: { fontSize: 14, fontWeight: 'bold' },
-  checklistItemRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
-  checklistItemText: { fontSize: 13, color: '#4B5563', marginLeft: 8, flex: 1, lineHeight: 18 },
+  checklistItemRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
+  checklistItemText: { fontSize: 13, color: '#4B5563', lineHeight: 18 },
   analysisBox: { flexDirection: 'row', backgroundColor: '#FEF2F2', padding: 12, borderRadius: 8, marginTop: 10, alignItems: 'center' },
   analysisText: { fontSize: 12, color: '#991B1B', flex: 1 }
 });
