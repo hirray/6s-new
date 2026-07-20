@@ -21,7 +21,7 @@ export default function ZonalProfile() {
       </ProfileCard>
 
       <ProfileCard title="Assignment Details">
-        <ProfileRow label="Zone:" value={data?.zone} />
+        <ProfileRow label="Zone:" value={data?.zone === 'Zone 1' || data?.zone === '1' ? 'Zone 1 - Anviksha' : data?.zone} />
         <ProfileRow label="Area Description:" value={data?.area} isMulti={true} />
       </ProfileCard>
     </ProfileLayout>

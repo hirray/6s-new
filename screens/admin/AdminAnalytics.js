@@ -1,12 +1,19 @@
-import React, { useContext } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useContext, useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AdminAnalytics({ onNavigate }) {
-  const { db, zones } = useContext(DataContext);
+  const { db, zones, fetchFromAPI } = useContext(DataContext);
   const insets = useSafeAreaInsets();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    if(fetchFromAPI) await fetchFromAPI();
+    setRefreshing(false);
+  };
 
   let overallScore = 0;
   if (db.checklistSubmissions.length > 0) {
@@ -105,7 +112,10 @@ export default function AdminAnalytics({ onNavigate }) {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-    <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+    <ScrollView 
+      contentContainerStyle={{ paddingBottom: 100 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8C1B2F" />}
+    >
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <TouchableOpacity onPress={() => onNavigate && onNavigate('Home')}>

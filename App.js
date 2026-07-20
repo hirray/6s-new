@@ -1,4 +1,6 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
+import { View, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
@@ -16,12 +18,36 @@ import ZonalMain from './screens/zonal/ZonalMain';
 import AdminMain from './screens/admin/AdminMain';
 import ZonalDashboard from './screens/ZonalDashboard';
 import LoginScreen from './screens/LoginScreen';
+import OnboardingScreen from './screens/OnboardingScreen';
 import { DataProvider, DataContext } from './context/DataContext';
 
 const Tab = createBottomTabNavigator();
 
 function MainNavigator() {
   const { currentUser, logout } = useContext(DataContext);
+  const [isFirstLaunch, setIsFirstLaunch] = useState(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem('@onboarding_complete').then(value => {
+      if (value === null) {
+        setIsFirstLaunch(true);
+      } else {
+        setIsFirstLaunch(false);
+      }
+    });
+  }, []);
+
+  if (isFirstLaunch === null) {
+    return (
+      <View style={{flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center'}}>
+        <ActivityIndicator size="large" color="#FFF" />
+      </View>
+    );
+  }
+
+  if (isFirstLaunch) {
+    return <OnboardingScreen onFinish={() => setIsFirstLaunch(false)} />;
+  }
 
   if (!currentUser) {
     return <LoginScreen />;

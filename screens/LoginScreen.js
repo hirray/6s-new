@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Dimensions, Animated } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Dimensions, Animated, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../context/DataContext';
 
@@ -186,7 +186,11 @@ export default function LoginScreen() {
         {/* Middle Left Decorative Circle */}
         <View style={styles.middleLeftCircle} />
 
-      <View style={styles.contentContainer}>
+      <ScrollView 
+        contentContainerStyle={styles.contentContainer} 
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         
         {/* GSFCU Logo Area */}
         <View style={styles.logoContainer}>
@@ -266,10 +270,10 @@ export default function LoginScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                <View style={{ height: 20 }} />
+                <View style={{ height: 10 }} />
 
                 {/* Quick Login Buttons */}
-                <Text style={{textAlign: 'center', color: '#999', marginBottom: 10, fontSize: 12}}>Quick Login for Testing</Text>
+                <Text style={{textAlign: 'center', color: '#999', marginBottom: 5, fontSize: 12}}>Quick Login for Testing</Text>
                 <View style={styles.quickLoginContainer}>
                   <TouchableOpacity style={styles.quickLoginBtn} onPress={() => handleLogin('admin', 'admin')}>
                     <Text style={styles.quickLoginText}>Admin</Text>
@@ -337,7 +341,7 @@ export default function LoginScreen() {
           />
         </TouchableOpacity>
 
-      </View>
+      </ScrollView>
 
       </View>
       
@@ -369,7 +373,7 @@ const styles = StyleSheet.create({
     paddingTop: 30, // Top breathing room
   },
   contentContainer: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 24,
     justifyContent: 'center', // Centers form vertically
     zIndex: 10,

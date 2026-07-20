@@ -1,5 +1,5 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, ImageBackground, TouchableOpacity, Modal, TouchableWithoutFeedback, ScrollView, Animated, Easing, Dimensions, TextInput, LayoutAnimation, Platform, UIManager, Image } from 'react-native';
+import { StyleSheet, Text, View, ImageBackground, TouchableOpacity, Modal, TouchableWithoutFeedback, ScrollView, Animated, Easing, Dimensions, TextInput, LayoutAnimation, Platform, UIManager, Image, RefreshControl } from 'react-native';
 import { ReactNativeZoomableView } from '@openspacelabs/react-native-zoomable-view';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
@@ -115,9 +115,16 @@ const FloatingZonePopup = ({ selectedZone, onClose }) => {
 };
 
 export default function AdminHome({ onNavigate }) {
-  const { zones, db, staticData } = useContext(DataContext);
+  const { zones, db, staticData, fetchFromAPI } = useContext(DataContext);
   const [selectedZone, setSelectedZone] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   const insets = useSafeAreaInsets();
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    if(fetchFromAPI) await fetchFromAPI();
+    setRefreshing(false);
+  };
 
   // Compute live zone data from MongoDB db
   const liveZones = zones.map(z => {
@@ -204,6 +211,7 @@ export default function AdminHome({ onNavigate }) {
         if (selectedZone) setSelectedZone(null);
       }}
       scrollEventThrottle={16}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8C1B2F" />}
     >
       {/* Custom Maroon Header */}
       <View style={styles.maroonHeader}>
@@ -220,7 +228,7 @@ export default function AdminHome({ onNavigate }) {
           <Text style={styles.pageSubtitle}>University Compliance Overview</Text>
         </View>
         <View style={styles.illustrationContainer}>
-          <Image source={require('../../sixs_logo.jpeg')} style={[styles.illustration, { borderRadius: 40 }]} resizeMode="contain" />
+          <Image source={require('../../sixs_logo.png')} style={[styles.illustration, { borderRadius: 40 }]} resizeMode="contain" />
         </View>
       </View>
 

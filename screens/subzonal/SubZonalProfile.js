@@ -21,8 +21,8 @@ export default function SubZonalProfile() {
       </ProfileCard>
 
       <ProfileCard title="Assignment Details">
-        <ProfileRow label="Zone:" value={data?.zone} />
-        <ProfileRow label="Sub-Zone:" value={data?.subZone} />
+        <ProfileRow label="Zone:" value={data?.zone === 'Zone 1' || data?.zone === '1' ? 'Zone 1 - Anviksha' : data?.zone} />
+        <ProfileRow label="Sub-Zone:" value={data?.subZone === '3' ? 'Sub-Zone 3 - Data Science' : `Sub-Zone ${data?.subZone}`} />
         <ProfileRow label="Areas Covered:" value={data?.areasCovered} isMulti={true} />
       </ProfileCard>
     </ProfileLayout>

@@ -130,37 +130,38 @@ export const DataProvider = ({ children }) => {
     checklists: []
   });
 
+  const fetchFromAPI = async () => {
+    try {
+      const [complaintsRes, advisoriesRes, zhRes, szhRes, clRes, submissionsRes, zonalReportsRes] = await Promise.all([
+        axios.get(`${API_URL}/complaints`),
+        axios.get(`${API_URL}/advisories`),
+        axios.get(`${API_URL}/data/zonalheads`),
+        axios.get(`${API_URL}/data/subzonalheads`),
+        axios.get(`${API_URL}/data/checklists`),
+        axios.get(`${API_URL}/submissions`),
+        axios.get(`${API_URL}/submissions/zonal-reports`)
+      ]);
+      
+      setDb(prev => ({
+        ...prev,
+        complaints: complaintsRes.data.map(c => ({ ...c, id: c._id })),
+        advisories: advisoriesRes.data.map(a => ({ ...a, id: a._id })),
+        checklistSubmissions: submissionsRes.data.map(s => ({ ...s, id: s._id })),
+        zonalReports: zonalReportsRes.data.map(r => ({ ...r, id: r._id }))
+      }));
+      setStaticData({
+        zonalHeads: zhRes.data,
+        subZonalHeads: szhRes.data,
+        checklists: clRes.data
+      });
+    } catch (error) {
+      console.error('Failed to load db from API', error);
+    } finally {
+      setIsDbLoaded(true);
+    }
+  };
+
   useEffect(() => {
-    const fetchFromAPI = async () => {
-      try {
-        const [complaintsRes, advisoriesRes, zhRes, szhRes, clRes, submissionsRes, zonalReportsRes] = await Promise.all([
-          axios.get(`${API_URL}/complaints`),
-          axios.get(`${API_URL}/advisories`),
-          axios.get(`${API_URL}/data/zonalheads`),
-          axios.get(`${API_URL}/data/subzonalheads`),
-          axios.get(`${API_URL}/data/checklists`),
-          axios.get(`${API_URL}/submissions`),
-          axios.get(`${API_URL}/submissions/zonal-reports`)
-        ]);
-        
-        setDb(prev => ({
-          ...prev,
-          complaints: complaintsRes.data.map(c => ({ ...c, id: c._id })),
-          advisories: advisoriesRes.data.map(a => ({ ...a, id: a._id })),
-          checklistSubmissions: submissionsRes.data.map(s => ({ ...s, id: s._id })),
-          zonalReports: zonalReportsRes.data.map(r => ({ ...r, id: r._id }))
-        }));
-        setStaticData({
-          zonalHeads: zhRes.data,
-          subZonalHeads: szhRes.data,
-          checklists: clRes.data
-        });
-      } catch (error) {
-        console.error('Failed to load db from API', error);
-      } finally {
-        setIsDbLoaded(true);
-      }
-    };
     fetchFromAPI();
   }, []);
 
@@ -388,6 +389,7 @@ export const DataProvider = ({ children }) => {
       methodology,
       db,
       setDb,
+      fetchFromAPI,
       SZH,
       CL_TASKS,
       publishAdvisory,

@@ -2,7 +2,7 @@ import React, { useContext } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
 import { SUB_ZONAL_HEADS } from '../../data/subZonalHeads';
@@ -136,9 +136,13 @@ export default function ZonalAnalytics({ onBackToHome }) {
     `;
 
     try {
-      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      const { base64 } = await Print.printToFileAsync({ html: htmlContent, base64: true });
+      const newUri = FileSystem.documentDirectory + `Zone_${zoneNumber || 'Performance'}_Report.pdf`;
+      
+      await FileSystem.writeAsStringAsync(newUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+      
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri);
+        await Sharing.shareAsync(newUri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf' });
       } else {
         Alert.alert("Error", "Sharing is not available on this device.");
       }

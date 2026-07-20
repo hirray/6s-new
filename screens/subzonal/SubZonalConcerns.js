@@ -37,7 +37,7 @@ export default function SubZonalConcerns() {
   });
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Sub-Zone Concerns</Text>
         <Text style={styles.headerSubtitle}>

@@ -4,7 +4,7 @@
     "slug": "temp_expo",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./GSFC_6S_512x512.png",
+    "icon": "./sixs_logo_padded.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
@@ -14,11 +14,16 @@
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./GSFC_6S_512x512.png"
+        "foregroundImage": "./sixs_logo_padded.png"
       }
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "1776b8ee-6bc3-409a-9297-0d61b7e32f0b"
+      }
     }
   }
 }
