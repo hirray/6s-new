@@ -24,7 +24,7 @@ export default function SubZonalAudit() {
     }
   };
 
-  const myZone = currentUser?.data?.zone || (currentUser?.id === 'SZH_F1' ? 'Zone 1 – Anviksha' : 'All Zones');
+  const myZone = currentUser?.data?.zone || 'All Zones';
 
   const extractZoneNumber = (zoneStr) => {
     if (!zoneStr) return null;
@@ -34,7 +34,7 @@ export default function SubZonalAudit() {
 
   const myComplaints = db.complaints.filter(c => {
     if (currentUser?.role === 'Admin') return true;
-    const myZoneNum = currentUser?.data ? extractZoneNumber(currentUser.data.zone) : (currentUser?.id === 'SZH_F1' ? 1 : null);
+    const myZoneNum = currentUser?.data ? extractZoneNumber(currentUser.data.zone) : null;
     if (!myZoneNum) return true;
     return extractZoneNumber(c.zone) === myZoneNum;
   });
@@ -62,21 +62,29 @@ export default function SubZonalAudit() {
   };
 
   const mySubmissions = db.checklistSubmissions
-    .filter(s => s.subZonalHeadId === currentUser?.id)
+    .filter(s => s.subZonalHeadId === currentUser?.id || s.subZonalHeadId === currentUser?.data?._id)
     .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
   
   const lastSub = mySubmissions[0];
-  let isGreen = false;
+  let checklistStatus = 'RED'; 
   let formattedLastSubDate = '';
 
   if (lastSub) {
     const lastSubDate = new Date(lastSub.date || lastSub.createdAt);
     const hoursSince = (new Date() - lastSubDate) / (1000 * 60 * 60);
+    
+    formattedLastSubDate = lastSubDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' IST';
+    
     if (hoursSince <= 48) {
-      isGreen = true;
-      formattedLastSubDate = lastSubDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' IST';
+      checklistStatus = 'GREEN';
+    } else if (hoursSince <= 72) {
+      checklistStatus = 'YELLOW';
+    } else {
+      checklistStatus = 'RED';
     }
   }
+
+  const isGreen = checklistStatus === 'GREEN';
 
   return (
     <ScrollView style={styles.container}>
@@ -90,6 +98,17 @@ export default function SubZonalAudit() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>📋 Daily 6S Inspection</Text>
         <Text style={styles.cardSubtitle}>Complete your daily floor checklist to maintain compliance.</Text>
+
+        {!isGreen && checklistStatus !== 'GREEN' && mySubmissions.length > 0 && (
+          <View style={{ padding: 12, borderRadius: 8, marginBottom: 16, backgroundColor: checklistStatus === 'YELLOW' ? '#FEF3C7' : '#FEE2E2', borderWidth: 1, borderColor: checklistStatus === 'YELLOW' ? '#F59E0B' : '#EF4444' }}>
+            <Text style={{ color: checklistStatus === 'YELLOW' ? '#92400E' : '#991B1B', fontWeight: 'bold', fontSize: 14 }}>
+              {checklistStatus === 'YELLOW' ? '⚠️ Warning: Overdue (48-72 hrs)' : '🚨 Critical: Overdue (72+ hrs)'}
+            </Text>
+            <Text style={{ color: checklistStatus === 'YELLOW' ? '#B45309' : '#B91C1C', fontSize: 12, marginTop: 4 }}>
+              Last submitted: {formattedLastSubDate}
+            </Text>
+          </View>
+        )}
 
         {/* Progress Bar */}
         <View style={styles.progressContainer}>
