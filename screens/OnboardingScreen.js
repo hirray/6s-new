@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, Dimensions, TouchableOpacity, Animated, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
@@ -57,13 +58,15 @@ export default function OnboardingScreen({ onFinish }) {
           <View style={styles.slide}>
             <Image source={item.image} style={styles.image} resizeMode="cover" />
             
-            {/* Transparent clickable overlay for the last slide's arrow */}
+            {/* Real React Native button perfectly covering the one in the image */}
             {index === slides.length - 1 && (
-              <Pressable 
+              <TouchableOpacity 
                 style={styles.lastSlideOverlayButton} 
                 onPress={completeOnboarding}
-                android_ripple={{ color: 'rgba(255, 255, 255, 0.4)', borderless: true, radius: 35 }}
-              />
+                activeOpacity={0.8}
+              >
+                <Ionicons name="arrow-forward-outline" size={38} color="#6E2A36" />
+              </TouchableOpacity>
             )}
           </View>
         )}
@@ -149,12 +152,18 @@ const styles = StyleSheet.create({
   },
   lastSlideOverlayButton: {
     position: 'absolute',
-    // Adjust bottom and right to perfectly match the arrow in the image
-    bottom: 45, 
-    right: 25,
-    width: 70,
-    height: 70,
-    borderRadius: 35, // Makes the ripple and hit area perfectly circular
-    backgroundColor: 'transparent',
+    bottom: height * 0.085, // Adjusted to perfectly overlay the button in the image
+    alignSelf: 'center',
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 5,
   }
 });

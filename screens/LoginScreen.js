@@ -2,6 +2,10 @@ import React, { useContext, useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Dimensions, Animated, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../context/DataContext';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { auth } from '../firebaseConfig';
+import { ZONAL_HEAD_EMAILS, SUB_ZONAL_HEAD_EMAILS } from '../config/roles';
 
 const { width, height } = Dimensions.get('window');
 
@@ -9,9 +13,10 @@ export default function LoginScreen() {
   const { login, staticData } = useContext(DataContext);
   const SUB_ZONAL_HEADS = staticData?.subZonalHeads || [];
   const ZONAL_HEADS = staticData?.zonalHeads || [];
+  const ADMINS = staticData?.admins || [];
   const [activeTab, setActiveTab] = useState('login');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState('1234');
   const [showPassword, setShowPassword] = useState(false);
   const [errorText, setErrorText] = useState('');
 
@@ -24,26 +29,85 @@ export default function LoginScreen() {
   const buttonScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Google Sign-in disabled for testing on standard Expo Go
+    // Initialize Google Sign-In
+    GoogleSignin.configure({
+      webClientId: '659444199187-m32f5r56tsna27ch4dep1jg5sa7nuo2t.apps.googleusercontent.com', // Replace with your actual Web Client ID from Firebase Console
+    });
   }, []);
 
   const handleGoogleLogin = async () => {
-    setErrorText('Google login is disabled for Expo Go local testing.');
+    try {
+      setErrorText('');
+      // Check if your device supports Google Play Services
+      await GoogleSignin.hasPlayServices();
+
+      // Force account selection by signing out any previously cached account
+      try {
+        await GoogleSignin.signOut();
+      } catch (e) {
+        // Ignore error if already signed out
+      }
+
+      // Sign in with Google
+      const response = await GoogleSignin.signIn();
+      const { idToken } = response.data;
+
+      if (!idToken) {
+        throw new Error('No ID token found');
+      }
+
+      // Create a Google credential with the token
+      const googleCredential = GoogleAuthProvider.credential(idToken);
+
+      // Sign-in the user with the credential
+      const userCredential = await signInWithCredential(auth, googleCredential);
+      const user = userCredential.user;
+      const email = user.email ? user.email.toLowerCase() : '';
+      const name = user.displayName || email;
+
+      // Role Routing Logic based on Email
+      if (ADMINS.some(admin => admin.email.toLowerCase() === email)) {
+        const adminInfo = ADMINS.find(admin => admin.email.toLowerCase() === email);
+        if (email.endsWith('@gsfcuniversity.ac.in')) {
+          const username = email.split('@')[0];
+          setPendingUser({ uid: username, name: adminInfo.name, email: email });
+          setPendingRole({ type: 'Admin', data: adminInfo });
+          setActiveTab('roleSelection');
+        } else {
+          login({ role: 'Admin', id: adminInfo._id || adminInfo.id, name: adminInfo.name });
+        }
+      } else if (ZONAL_HEAD_EMAILS.map(e => e.toLowerCase()).includes(email)) {
+        login({ role: 'ZonalHead', id: email, name });
+      } else if (SUB_ZONAL_HEAD_EMAILS.map(e => e.toLowerCase()).includes(email)) {
+        login({ role: 'SubZonalHead', id: email, name });
+      } else if (email.endsWith('@gsfcuniversity.ac.in')) {
+        login({ role: 'Student', id: email, name });
+      } else {
+        // Unauthorized Domain/Email
+        await GoogleSignin.signOut();
+        await auth.signOut();
+        setErrorText('Unauthorized Email. Please use your @gsfcuniversity.ac.in account.');
+      }
+
+    } catch (error) {
+      console.error(error);
+      setErrorText('Google Sign-In failed. ' + error.message);
+    }
   };
 
   const handleRoleSelection = (roleType) => {
     if (roleType === 'Student') {
-      login({ 
-        role: 'Student', 
-        id: pendingUser.uid, 
+      login({
+        role: 'Student',
+        id: pendingUser.uid,
         name: pendingUser.name || pendingUser.uid,
         email: pendingUser.email
       });
     } else {
-      login({ 
-        role: pendingRole.type, 
-        id: pendingRole.data.id, 
-        name: pendingRole.data.name, 
+      login({
+        role: pendingRole.type,
+        id: pendingRole.data.id,
+        name: pendingRole.data.name,
         data: pendingRole.data,
         email: pendingUser.email
       });
@@ -90,37 +154,51 @@ export default function LoginScreen() {
 
     if ((id === 'admin' || id === 'admin@gsfc.edu') && pass === 'admin') {
       login({ role: 'Admin', id: 'ADMIN_1', name: 'Core Committee' });
+    } else if (ADMINS.some(admin => admin.email.toLowerCase() === id)) {
+      if (pass === '1234' || pass === 'pwd123' || pass === 'admin') {
+        const adminInfo = ADMINS.find(admin => admin.email.toLowerCase() === id);
+        if (id.endsWith('@gsfcuniversity.ac.in')) {
+          const username = id.split('@')[0];
+          setPendingUser({ uid: username, name: adminInfo.name, email: id });
+          setPendingRole({ type: 'Admin', data: adminInfo });
+          setActiveTab('roleSelection');
+        } else {
+          login({ role: 'Admin', id: adminInfo._id || adminInfo.id, name: adminInfo.name });
+        }
+      } else {
+        setErrorText('Invalid password.');
+      }
     } else if ((id === 'student' || id === 'student@gsfc.edu') && pass === 'student') {
       login({ role: 'Student', id: 'STU_1', name: 'Test Student' });
-    } else if (id === 'dulari.raj@gsfcuniversity.ac.in' && (pass === '1234' || pass === '12334' || pass === '12345')) {
-      login({ 
-        role: 'SubZonalHead', 
-        id, 
+    } else if (id === 'dulari.raj@gsfcuniversity.ac.in' && (pass === '1234' || pass === '12334' || pass === '12345' || pass === 'pwd123')) {
+      login({
+        role: 'SubZonalHead',
+        id,
         name: 'Ms. Dulari Raj',
         data: { id, email: id, name: 'Ms. Dulari Raj', zone: 'Zone 1', subZone: '1', areasCovered: 'Main Entrance, Lobby, Reception, Admission' }
       });
-    } else if (id === 'devjani.banerjee@gsfcuniversity.ac.in' && (pass === '1234' || pass === '12334' || pass === '12345')) {
-      login({ 
-        role: 'ZonalHead', 
-        id, 
-        name: 'Dr. Devjani Banerjee', 
+    } else if (id === 'devjani.banerjee@gsfcuniversity.ac.in' && (pass === '1234' || pass === '12334' || pass === '12345' || pass === 'pwd123')) {
+      login({
+        role: 'ZonalHead',
+        id,
+        name: 'Dr. Devjani Banerjee',
         data: { id, email: id, name: 'Dr. Devjani Banerjee', zoneNumber: '1', zone: 'Zone 1' }
       });
     } else if (SUB_ZONAL_HEADS.some(head => head.email === id)) {
-      if (pass === '1234' || pass === '12334') {
+      if (pass === '1234' || pass === '12334' || pass === 'pwd123') {
         const subZonalHeadInfo = SUB_ZONAL_HEADS.find(head => head.email === id);
-        
+
         if (id.endsWith('@gsfcuniversity.ac.in')) {
           const username = id.split('@')[0];
           setPendingUser({ uid: username, name: subZonalHeadInfo.name, email: id });
           setPendingRole({ type: 'SubZonalHead', data: subZonalHeadInfo });
           setActiveTab('roleSelection');
         } else {
-          login({ 
-            role: 'SubZonalHead', 
-            id: subZonalHeadInfo.id, 
+          login({
+            role: 'SubZonalHead',
+            id: subZonalHeadInfo.id,
             name: subZonalHeadInfo.name,
-            data: subZonalHeadInfo 
+            data: subZonalHeadInfo
           });
         }
       } else {
@@ -128,16 +206,16 @@ export default function LoginScreen() {
       }
     } else if ((id === 'subzone' || id === 'subzone@gsfc.edu') && pass === 'subzone') {
       // Fallback for the test subzonal head mapped to Dulari Raj for demo purposes
-      login({ 
-        role: 'SubZonalHead', 
-        id: 'dulari.raj@gsfcuniversity.ac.in', 
+      login({
+        role: 'SubZonalHead',
+        id: 'dulari.raj@gsfcuniversity.ac.in',
         name: 'Ms. Dulari Raj',
         data: { id: 'dulari.raj@gsfcuniversity.ac.in', name: 'Ms. Dulari Raj', zone: 'Zone 1', subZone: '1', areasCovered: 'Main Entrance, Lobby, Reception, Admission' }
       });
-    } else if (id === '24bt04d224@gsfcuniversity.ac.in') {
-      login({ role: 'Student', id: 'STU_1', name: 'Hirra' });
+    } else if (id === '24bt04d224@gsfcuniversity.ac.in' || id === '24bto4d224@gsfcuniversity.ac.in') {
+      login({ role: 'Student', id: id, name: 'D224_deep', email: id });
     } else if (ZONAL_HEADS.some(head => head.email === id)) {
-      if (pass === '1234' || pass === '12334') {
+      if (pass === '1234' || pass === '12334' || pass === 'pwd123') {
         const zonalHeadInfo = ZONAL_HEADS.find(head => head.email === id);
         if (id.endsWith('@gsfcuniversity.ac.in')) {
           const username = id.split('@')[0];
@@ -145,11 +223,11 @@ export default function LoginScreen() {
           setPendingRole({ type: 'ZonalHead', data: zonalHeadInfo });
           setActiveTab('roleSelection');
         } else {
-          login({ 
-            role: 'ZonalHead', 
-            id: zonalHeadInfo.id, 
-            name: zonalHeadInfo.name, 
-            data: zonalHeadInfo 
+          login({
+            role: 'ZonalHead',
+            id: zonalHeadInfo.id,
+            name: zonalHeadInfo.name,
+            data: zonalHeadInfo
           });
         }
       } else {
@@ -159,207 +237,190 @@ export default function LoginScreen() {
       const zoneNumber = parseInt(id.replace('zone', ''), 10);
       if (zoneNumber >= 1 && zoneNumber <= 8) {
         const zoneInfo = ZONES_DATA.find(z => z.id === zoneNumber);
-        login({ 
-          role: 'ZonalHead', 
-          id: `ZH_Z${zoneNumber}`, 
-          name: zoneInfo.head, 
-          data: zoneInfo 
+        login({
+          role: 'ZonalHead',
+          id: `ZH_Z${zoneNumber}`,
+          name: zoneInfo.head,
+          data: zoneInfo
         });
       } else {
         setErrorText('Invalid zone. Try zone1 through zone8.');
       }
+    } else if (id.endsWith('@gsfcuniversity.ac.in') && (pass === 'pwd123' || pass === '1234')) {
+      login({ role: 'Student', id: id, name: id.split('@')[0], email: id });
     } else {
-      setErrorText('Invalid credentials. Try admin/admin, student/student, or teacher email with 1234.');
+      setErrorText('Invalid credentials. Try admin/admin, student/student, or use 1234 for gsfcuniversity emails.');
     }
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={styles.innerContainer}>
-        
+    <View style={styles.container}>
+      {/* Bottom Images Row - Placed behind everything and doesn't move with keyboard */}
+      <View style={styles.bottomImagesContainer}>
+        <Image
+          source={require('../rb.jpeg')}
+          style={styles.bottomLeftImage}
+          resizeMode="cover"
+        />
+        <Image
+          source={require('../lb.jpeg')}
+          style={styles.bottomRightImage}
+          resizeMode="cover"
+        />
+      </View>
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={styles.innerContainer}>
+
         {/* Top Right Decorative Circle */}
         <View style={styles.topRightCircle} />
 
         {/* Middle Left Decorative Circle */}
         <View style={styles.middleLeftCircle} />
 
-      <ScrollView 
-        contentContainerStyle={styles.contentContainer} 
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        
-        {/* GSFCU Logo Area */}
-        <View style={styles.logoContainer}>
-          <Image 
-            source={require('../logo.png')} 
-            style={styles.logoImage} 
-            resizeMode="contain" 
-          />
-        </View>
+        <ScrollView
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
 
-        {/* Welcome Text */}
-        <View style={styles.welcomeContainer}>
-          <Text style={styles.titleText}>6S Campus Monitor</Text>
-          <Text style={styles.welcomeText}>Welcome 👋</Text>
-        </View>
-
-        {/* Main Card */}
-        <View style={styles.cardContainer}>
-          <View style={styles.card}>
-            
-            {/* Tabs */}
-            <View style={styles.tabContainer}>
-              <View style={styles.tab}>
-                <Text style={[styles.tabText, styles.activeTabText]}>Login</Text>
-                <View style={styles.activeTabIndicator} />
-              </View>
-            </View>
-
-            {/* Form */}
-            {activeTab === 'login' && (
-              <View style={styles.form}>
-
-                {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
-
-                {/* Username Input */}
-                <TextInput
-                  style={styles.input}
-                  placeholder="Username / Email"
-                  placeholderTextColor="#999"
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-
-                {/* Password Input */}
-                <View style={styles.passwordContainer}>
-                  <TextInput
-                    style={styles.passwordInput}
-                    placeholder="Password"
-                    placeholderTextColor="#999"
-                    secureTextEntry={!showPassword}
-                    value={password}
-                    onChangeText={setPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                  <TouchableOpacity 
-                    style={styles.eyeIcon} 
-                    onPress={() => setShowPassword(!showPassword)}
-                  >
-                    <Ionicons 
-                      name={showPassword ? "eye-off" : "eye"} 
-                      size={20} 
-                      color="#6E2A36" 
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Login Button */}
-                <TouchableOpacity
-                  style={[styles.input, { backgroundColor: '#6E2A36', borderColor: '#6E2A36', alignItems: 'center', marginTop: 10 }]}
-                  onPress={() => handleLogin()}
-                >
-                  <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>
-                    Login
-                  </Text>
-                </TouchableOpacity>
-
-                <View style={{ height: 10 }} />
-
-                {/* Quick Login Buttons */}
-                <Text style={{textAlign: 'center', color: '#999', marginBottom: 5, fontSize: 12}}>Quick Login for Testing</Text>
-                <View style={styles.quickLoginContainer}>
-                  <TouchableOpacity style={styles.quickLoginBtn} onPress={() => handleLogin('admin', 'admin')}>
-                    <Text style={styles.quickLoginText}>Admin</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.quickLoginBtn} onPress={() => handleLogin('zone1', 'zone1')}>
-                    <Text style={styles.quickLoginText}>Zonal Head</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.quickLoginBtn} onPress={() => handleLogin('subzone', 'subzone')}>
-                    <Text style={styles.quickLoginText}>Sub-Zonal</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.quickLoginBtn} onPress={() => handleLogin('student', 'student')}>
-                    <Text style={styles.quickLoginText}>Student</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            {activeTab === 'roleSelection' && (
-              <View style={styles.form}>
-                <Text style={{ textAlign: 'center', marginBottom: 20, color: '#666', fontSize: 16 }}>
-                  You have multiple roles associated with this email. Please select how you want to log in:
-                </Text>
-
-                <TouchableOpacity 
-                  style={[styles.input, { backgroundColor: '#F3E9DD', borderColor: '#6E2A36', alignItems: 'center' }]} 
-                  onPress={() => handleRoleSelection(pendingRole.type)}
-                >
-                  <Text style={{ color: '#6E2A36', fontWeight: 'bold', fontSize: 16 }}>
-                    Continue as {pendingRole.type === 'ZonalHead' ? 'Zonal Head' : 'Sub-Zonal Head'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.input, { backgroundColor: '#F5F5F5', alignItems: 'center', marginTop: 10 }]} 
-                  onPress={() => handleRoleSelection('Student')}
-                >
-                  <Text style={{ color: '#333', fontWeight: 'bold', fontSize: 16 }}>
-                    Continue as Student
-                  </Text>
-                </TouchableOpacity>
-
-                <View style={{ height: 20 }} />
-              </View>
-            )}
-
+          {/* GSFCU Logo Area */}
+          <View style={styles.logoContainer}>
+            <Image
+              source={require('../logo.jpg')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
 
-          {/* Notch removed since floating button is no longer used */}
-        </View>
+          {/* Welcome Text */}
+          <View style={styles.welcomeContainer}>
+            <Text style={styles.titleText}>6S Campus Monitor</Text>
+            <Text style={styles.welcomeText}>Welcome 👋</Text>
+          </View>
 
-        {/* Spacer */}
-        <View style={{ height: 20 }} />
+          {/* Main Card */}
+          <View style={styles.cardContainer}>
+            <View style={styles.card}>
 
-        {/* Google login */}
-        <View style={styles.dividerContainer}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
-        </View>
+              {/* Tabs */}
+              <View style={styles.tabContainer}>
+                <View style={styles.tab}>
+                  <Text style={[styles.tabText, styles.activeTabText]}>Login</Text>
+                  <View style={styles.activeTabIndicator} />
+                </View>
+              </View>
 
-        <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
-          <Image 
-            source={{ uri: 'https://img.icons8.com/color/48/000000/google-logo.png' }} 
-            style={{ width: 24, height: 24 }} 
-          />
-        </TouchableOpacity>
+              {/* Form */}
+              {activeTab === 'login' && (
+                <View style={styles.form}>
+                  {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
+                  
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Email Address"
+                    placeholderTextColor="#999"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                  
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      placeholder="Password"
+                      placeholderTextColor="#999"
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                    />
+                    <TouchableOpacity
+                      onPress={() => setShowPassword(!showPassword)}
+                      style={styles.eyeIcon}
+                    >
+                      <Ionicons
+                        name={showPassword ? "eye-off" : "eye"}
+                        size={20}
+                        color="#999"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  <TouchableOpacity
+                    style={[styles.googleSignInButton, { backgroundColor: '#6E2A36', borderColor: '#6E2A36', marginTop: 5, marginBottom: 15 }]}
+                    activeOpacity={0.8}
+                    onPress={() => handleLogin()}
+                  >
+                    <Text style={[styles.googleButtonText, { color: '#FFFFFF' }]}>Login</Text>
+                  </TouchableOpacity>
 
-      </ScrollView>
+                  <View style={styles.dividerContainer}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>or</Text>
+                    <View style={styles.dividerLine} />
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.googleSignInButton}
+                    activeOpacity={0.8}
+                    onPress={handleGoogleLogin}
+                  >
+                    <Image
+                      source={{ uri: 'https://img.icons8.com/color/48/000000/google-logo.png' }}
+                      style={styles.googleIconImage}
+                    />
+                    <Text style={styles.googleButtonText}>Google Sign-In</Text>
+                  </TouchableOpacity>
+
+                  <View style={{ height: 10 }} />
+
+                </View>
+              )}
+
+              {activeTab === 'roleSelection' && (
+                <View style={styles.form}>
+                  <Text style={{ textAlign: 'center', marginBottom: 20, color: '#666', fontSize: 16 }}>
+                    You have multiple roles associated with this email. Please select how you want to log in:
+                  </Text>
+
+                  <TouchableOpacity
+                    style={[styles.input, { backgroundColor: '#F3E9DD', borderColor: '#6E2A36', alignItems: 'center' }]}
+                    onPress={() => handleRoleSelection(pendingRole.type)}
+                  >
+                    <Text style={{ color: '#6E2A36', fontWeight: 'bold', fontSize: 16 }}>
+                      Continue as {pendingRole.type === 'ZonalHead' ? 'Zonal Head' : pendingRole.type === 'SubZonalHead' ? 'Sub-Zonal Head' : 'Admin'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.input, { backgroundColor: '#F5F5F5', alignItems: 'center', marginTop: 10 }]}
+                    onPress={() => handleRoleSelection('Student')}
+                  >
+                    <Text style={{ color: '#333', fontWeight: 'bold', fontSize: 16 }}>
+                      Continue as Student
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={{ height: 20 }} />
+                </View>
+              )}
+
+            </View>
+
+            {/* Notch removed since floating button is no longer used */}
+          </View>
+
+
+
+        </ScrollView>
 
       </View>
-      
-      {/* Bottom Images Row (No Scrolling Needed) */}
-      <View style={styles.bottomImagesContainer}>
-        <Image 
-          source={require('../rb.jpeg')} 
-          style={styles.bottomLeftImage} 
-          resizeMode="cover" 
-        />
-        <Image 
-          source={require('../lb.jpeg')} 
-          style={styles.bottomRightImage} 
-          resizeMode="cover" 
-        />
-      </View>
-
     </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -377,7 +438,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     justifyContent: 'center', // Centers form vertically
     zIndex: 10,
-    paddingBottom: 20,
+    paddingBottom: 120,
   },
   topRightCircle: {
     position: 'absolute',
@@ -436,9 +497,9 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 36, // Large rounded corners (30-40px radius as requested)
-    padding: 24,
-    paddingBottom: 24, 
+    borderRadius: 24, // Smaller corners
+    padding: 20,      // Reduced padding
+    paddingBottom: 20,
     shadowColor: '#000',
     shadowOpacity: 0.08, // Soft shadow for depth
     shadowOffset: { width: 0, height: 16 },
@@ -476,10 +537,10 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: '#F5F5F5',
     borderRadius: 12,
-    padding: 14,
+    padding: 12, // Reduced
     fontSize: 14,
     color: '#333333',
-    marginBottom: 12,
+    marginBottom: 10, // Reduced
     borderWidth: 1,
     borderColor: '#EFEFEF',
   },
@@ -490,16 +551,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#EFEFEF',
-    marginBottom: 12,
+    marginBottom: 10, // Reduced
   },
   passwordInput: {
     flex: 1,
-    padding: 14,
+    padding: 12, // Reduced
     fontSize: 14,
     color: '#333333',
   },
   eyeIcon: {
-    padding: 14,
+    padding: 12, // Reduced
   },
   errorText: {
     color: '#D9534F',
@@ -526,26 +587,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 20,
   },
-  quickLoginContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  quickLoginBtn: {
-    backgroundColor: '#F3E9DD',
-    width: '48%',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#E8D5D8'
-  },
-  quickLoginText: {
-    color: '#6E2A36',
-    fontWeight: 'bold',
-    fontSize: 12
-  },
+
   floatingButton: {
     backgroundColor: '#6E2A36',
     width: 60,
@@ -576,20 +618,33 @@ const styles = StyleSheet.create({
     color: '#888888',
     fontSize: 14,
   },
-  googleButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+
+  googleSignInButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DADCE0',
+    borderRadius: 12,
+    paddingVertical: 12, // Reduced
+    paddingHorizontal: 16,
+    marginTop: 5,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
-    elevation: 4,
-    marginBottom: 10,
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  googleIconImage: {
+    width: 24,
+    height: 24,
+    marginRight: 12,
+  },
+  googleButtonText: {
+    fontSize: 16,
+    color: '#3C4043',
+    fontWeight: '600',
   },
   bottomImagesContainer: {
     position: 'absolute',

@@ -157,7 +157,7 @@ export default function MasterDashboard() {
             style={styles.zoomableView}
           >
             <ImageBackground 
-              source={require('../assets/campus-map.png')} 
+              source={require('../assets/campus-map.jpg')} 
               style={{ width: '100%', height: '100%' }}
             >
             {ZPOS.map((pos, idx) => {

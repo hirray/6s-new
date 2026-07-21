@@ -3,6 +3,7 @@ const router = express.Router();
 const ZonalHead = require('../models/ZonalHead');
 const SubZonalHead = require('../models/SubZonalHead');
 const Checklist = require('../models/Checklist');
+const Admin = require('../models/Admin');
 
 router.get('/zonalheads', async (req, res) => {
   try {
@@ -90,6 +91,47 @@ router.get('/checklists', async (req, res) => {
   try {
     const data = await Checklist.find();
     res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/admins', async (req, res) => {
+  try {
+    const data = await Admin.find();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/admins', async (req, res) => {
+  try {
+    const newAdmin = new Admin(req.body);
+    const savedAdmin = await newAdmin.save();
+    res.status(201).json(savedAdmin);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/admins/:id', async (req, res) => {
+  try {
+    const updatedAdmin = await Admin.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true }
+    );
+    res.json(updatedAdmin);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/admins/:id', async (req, res) => {
+  try {
+    await Admin.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Admin deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

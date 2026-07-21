@@ -27,4 +27,53 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// GET all students
+router.get('/', async (req, res) => {
+  try {
+    const data = await Student.find();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST a new student manually (from dashboard)
+router.post('/', async (req, res) => {
+  try {
+    const newStudent = new Student(req.body);
+    // ensure userId exists
+    if (!newStudent.userId && newStudent.email) {
+      newStudent.userId = newStudent.email.split('@')[0];
+    }
+    const savedStudent = await newStudent.save();
+    res.status(201).json(savedStudent);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT (update) student
+router.put('/:id', async (req, res) => {
+  try {
+    const updatedStudent = await Student.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true }
+    );
+    res.json(updatedStudent);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE student
+router.delete('/:id', async (req, res) => {
+  try {
+    await Student.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Student deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

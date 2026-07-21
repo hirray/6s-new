@@ -9,7 +9,7 @@ import { APP_ZONES, APP_SUBZONES, APP_METHODOLOGY, APP_SZH, APP_CL_TASKS } from 
 export const DataContext = createContext();
 
 // Use https://six-7uud.onrender.com for production, or 10.0.2.2 for local emulator
-const API_URL = 'https://six-7uud.onrender.com/api';
+const API_URL = 'https://six-7uud.onrender.com/api'; // Live backend URL
 
 export const DataProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -86,19 +86,21 @@ export const DataProvider = ({ children }) => {
   const [staticData, setStaticData] = useState({
     zonalHeads: [],
     subZonalHeads: [],
-    checklists: []
+    checklists: [],
+    admins: []
   });
 
   const fetchFromAPI = async () => {
     try {
-      const [complaintsRes, advisoriesRes, zhRes, szhRes, clRes, submissionsRes, zonalReportsRes] = await Promise.all([
+      const [complaintsRes, advisoriesRes, zhRes, szhRes, clRes, submissionsRes, zonalReportsRes, adminsRes] = await Promise.all([
         axios.get(`${API_URL}/complaints`),
         axios.get(`${API_URL}/advisories`),
         axios.get(`${API_URL}/data/zonalheads`),
         axios.get(`${API_URL}/data/subzonalheads`),
         axios.get(`${API_URL}/data/checklists`),
         axios.get(`${API_URL}/submissions`),
-        axios.get(`${API_URL}/submissions/zonal-reports`)
+        axios.get(`${API_URL}/submissions/zonal-reports`),
+        axios.get(`${API_URL}/data/admins`).catch(() => ({ data: [] }))
       ]);
       
       setDb(prev => ({
@@ -111,7 +113,8 @@ export const DataProvider = ({ children }) => {
       setStaticData({
         zonalHeads: zhRes.data,
         subZonalHeads: szhRes.data,
-        checklists: clRes.data
+        checklists: clRes.data,
+        admins: adminsRes.data
       });
     } catch (error) {
       console.error('Failed to load db from API', error);

@@ -247,7 +247,7 @@ export default function AdminHome({ onNavigate }) {
             bindToBorders={true}
           >
             <ImageBackground 
-              source={require('../../assets/live-map.png')}
+              source={require('../../assets/live-map.jpg')}
               style={styles.map}
               resizeMode="cover"
             >

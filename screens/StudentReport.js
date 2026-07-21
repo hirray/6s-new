@@ -527,7 +527,7 @@ export default function StudentReport({ navigation }) {
           <Text style={styles.subTitle}>Report and track campus concerns</Text>
         </View>
         <View style={styles.illustrationContainer}>
-          <Image source={require('../assets/student_reporting_issue.png')} style={[styles.illustration, { borderRadius: 60 }]} resizeMode="cover" />
+          <Image source={require('../assets/student_reporting_issue.jpg')} style={[styles.illustration, { borderRadius: 60 }]} resizeMode="cover" />
         </View>
       </View>
 
