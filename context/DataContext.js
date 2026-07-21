@@ -15,15 +15,20 @@ export const DataProvider = ({ children }) => {
   const [avatars, setAvatars] = useState({});
 
   useEffect(() => {
-    const loadAvatars = async () => {
+    const loadPersistedData = async () => {
       try {
-        const stored = await AsyncStorage.getItem('@avatars');
-        if (stored) setAvatars(JSON.parse(stored));
+        const storedAvatars = await AsyncStorage.getItem('@avatars');
+        if (storedAvatars) setAvatars(JSON.parse(storedAvatars));
+
+        const storedUser = await AsyncStorage.getItem('@currentUser');
+        if (storedUser) {
+          setCurrentUser(JSON.parse(storedUser));
+        }
       } catch (e) {
-        // Silently ignore avatar load errors
+        // Silently ignore load errors
       }
     };
-    loadAvatars();
+    loadPersistedData();
   }, []);
 
   const login = async (userData) => {
@@ -45,6 +50,7 @@ export const DataProvider = ({ children }) => {
       }
 
       setCurrentUser(finalUserData);
+      await AsyncStorage.setItem('@currentUser', JSON.stringify(finalUserData));
     } catch (e) {
       console.error(e);
     }
@@ -57,6 +63,7 @@ export const DataProvider = ({ children }) => {
       console.log('Error during logout:', error);
     }
     setCurrentUser(null);
+    await AsyncStorage.removeItem('@currentUser');
   };
 
   const [zones, setZones] = useState([

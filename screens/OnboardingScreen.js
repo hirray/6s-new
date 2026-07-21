@@ -69,8 +69,8 @@ export default function OnboardingScreen({ onFinish }) {
         )}
       />
 
-      {/* Skip Button */}
-      {currentIndex < slides.length - 1 && (
+      {/* Skip Button (Shown only on the last page) */}
+      {currentIndex === slides.length - 1 && (
         <TouchableOpacity 
           style={[styles.skipButton, { top: insets.top > 0 ? insets.top + 10 : 40 }]} 
           onPress={completeOnboarding}
@@ -149,13 +149,12 @@ const styles = StyleSheet.create({
   },
   lastSlideOverlayButton: {
     position: 'absolute',
-    bottom: height * 0.05, 
-    right: width * 0.06, 
+    // Adjust bottom and right to perfectly match the arrow in the image
+    bottom: 45, 
+    right: 25,
     width: 70,
     height: 70,
-    borderRadius: 35,
+    borderRadius: 35, // Makes the ripple and hit area perfectly circular
     backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
   }
 });

@@ -149,7 +149,7 @@ export default function AdminHome({ onNavigate }) {
     }) || [];
     const recentSubs = zoneSZHs.map(sz => {
       return db.checklistSubmissions
-        .filter(s => s.subZonalHeadId === sz.id)
+        .filter(s => s.subZonalHeadId === sz.id || s.subZonalHeadId === sz._id || s.subZonalHeadId === sz.email)
         .sort((a,b) => new Date(b.date) - new Date(a.date))[0];
     }).filter(Boolean);
 
@@ -166,7 +166,7 @@ export default function AdminHome({ onNavigate }) {
     
     zoneSZHs.forEach(sz => {
       const sub = db.checklistSubmissions
-        .filter(s => s.subZonalHeadId === sz.id)
+        .filter(s => s.subZonalHeadId === sz.id || s.subZonalHeadId === sz._id || s.subZonalHeadId === sz.email)
         .sort((a,b) => new Date(b.date) - new Date(a.date))[0];
       
       const subScore = sub ? sub.score : 0;

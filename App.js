@@ -25,28 +25,10 @@ const Tab = createBottomTabNavigator();
 
 function MainNavigator() {
   const { currentUser, logout } = useContext(DataContext);
-  const [isFirstLaunch, setIsFirstLaunch] = useState(null);
+  const [showSlides, setShowSlides] = useState(true);
 
-  useEffect(() => {
-    AsyncStorage.getItem('@onboarding_complete').then(value => {
-      if (value === null) {
-        setIsFirstLaunch(true);
-      } else {
-        setIsFirstLaunch(false);
-      }
-    });
-  }, []);
-
-  if (isFirstLaunch === null) {
-    return (
-      <View style={{flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center'}}>
-        <ActivityIndicator size="large" color="#FFF" />
-      </View>
-    );
-  }
-
-  if (isFirstLaunch) {
-    return <OnboardingScreen onFinish={() => setIsFirstLaunch(false)} />;
+  if (showSlides) {
+    return <OnboardingScreen onFinish={() => setShowSlides(false)} />;
   }
 
   if (!currentUser) {

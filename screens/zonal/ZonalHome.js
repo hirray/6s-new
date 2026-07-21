@@ -2,17 +2,17 @@ import React, { useContext, useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DataContext } from '../../context/DataContext';
-import { SUB_ZONAL_HEADS } from '../../data/subZonalHeads';
 
 export default function ZonalHome({ onSelectSubZone }) {
-  const { currentUser, db, submitZonalReport } = useContext(DataContext);
+  const { currentUser, db, submitZonalReport, staticData } = useContext(DataContext);
   const myZoneName = currentUser?.data?.zone; // e.g., 'Zone 1'
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportComments, setReportComments] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Get unique sub-zones for this zone
-  const subZonesInZone = SUB_ZONAL_HEADS.filter(h => h.zone === myZoneName);
+  // Get unique sub-zones for this zone from the backend staticData (or fallback to empty if missing)
+  const subZonesSource = staticData?.subZonalHeads || [];
+  const subZonesInZone = subZonesSource.filter(h => h.zone === myZoneName || h.zoneNumber == myZoneName?.replace(/\D/g, ''));
   
   // Create a unique list of areas (floor wise data)
   const uniqueAreasMap = {};
@@ -24,9 +24,9 @@ export default function ZonalHome({ onSelectSubZone }) {
 
   const uniqueAreas = Object.values(uniqueAreasMap);
 
-  const getLiveStatus = (areaId, areaEmail) => {
+  const getLiveStatus = (areaData) => {
     const latestLog = db.checklistSubmissions
-      .filter(sub => sub.subZonalHeadId === areaId || sub.subZonalHeadId === areaEmail)
+      .filter(sub => sub.subZonalHeadId === areaData.id || sub.subZonalHeadId === areaData._id || sub.subZonalHeadId === areaData.email)
       .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))[0];
     
     if (!latestLog) return { color: '#DC2626', bg: '#FEE2E2', label: 'Not Done' };
@@ -67,11 +67,11 @@ export default function ZonalHome({ onSelectSubZone }) {
         <Text style={styles.emptyText}>No floor areas found for this zone.</Text>
       ) : (
         uniqueAreas.map((areaData, index) => {
-          const status = getLiveStatus(areaData.id, areaData.email);
+          const status = getLiveStatus(areaData);
           
           // Get the latest log time if available for this specific area
           const areaLatestLog = db.checklistSubmissions
-            .filter(sub => sub.subZonalHeadId === areaData.id || sub.subZonalHeadId === areaData.email)
+            .filter(sub => sub.subZonalHeadId === areaData.id || sub.subZonalHeadId === areaData._id || sub.subZonalHeadId === areaData.email)
             .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))[0];
           
           let displayTime = 'No data';

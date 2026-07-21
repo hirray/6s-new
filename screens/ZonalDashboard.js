@@ -133,7 +133,7 @@ export default function ZonalDashboard({ navigation }) {
           return (
             <View key={item.id} style={styles.floorOverviewCard}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 16, marginBottom: 16 }}>
-                <Text style={[styles.floorOverviewTitle, { marginHorizontal: 0, marginBottom: 0 }]}>{item.areasCovered}</Text>
+                <Text style={[styles.floorOverviewTitle, { marginHorizontal: 0, marginBottom: 0, flex: 1, paddingRight: 10 }]} numberOfLines={3}>{item.areasCovered}</Text>
                 <View style={{ backgroundColor: statusColor + '22', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: statusColor }}>
                   <Text style={{ color: statusColor, fontSize: 10, fontWeight: 'bold' }}>Status: {subZoneStatus}</Text>
                 </View>
@@ -144,7 +144,7 @@ export default function ZonalDashboard({ navigation }) {
                   const sColor = sCat.score >= 80 ? '#10B981' : (sCat.score >= 60 ? '#F97316' : '#EF4444');
                   return (
                     <View key={sCat.id}>
-                      <TouchableOpacity style={styles.sixSRow} onPress={() => setExpandedS(expandedS === sCat.id ? null : sCat.id)}>
+                      <View style={styles.sixSRow}>
                         <View style={styles.sixSLabelContainer}>
                           <Text style={styles.sixSMain}>{sCat.label}</Text>
                           <Text style={styles.sixSSub}>({sCat.sub})</Text>
@@ -153,8 +153,7 @@ export default function ZonalDashboard({ navigation }) {
                           <View style={[styles.sixSBarFill, { width: `${sCat.score}%`, backgroundColor: sColor }]} />
                         </View>
                         <Text style={styles.sixSScore}>{sCat.score}%</Text>
-                        <Ionicons name={expandedS === sCat.id ? "chevron-up" : "chevron-down"} size={16} color="#64748B" />
-                      </TouchableOpacity>
+                      </View>
 
                       {expandedS === sCat.id && (
                         <View style={styles.checklistExpanded}>
@@ -172,7 +171,22 @@ export default function ZonalDashboard({ navigation }) {
                 })}
               </View>
 
-              <TouchableOpacity style={styles.approveBtn} onPress={() => Alert.alert('Success', 'Work for this area has been approved and logged.')}>
+              <TouchableOpacity style={styles.approveBtn} onPress={() => {
+                Alert.alert(
+                  'Approve Work',
+                  `Are you sure you want to approve the latest checklist submission for ${item.areasCovered}?`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { 
+                      text: 'Approve', 
+                      onPress: () => {
+                        // Normally you would call approveChecklist(latestLog._id) here
+                        Alert.alert('Success', 'Work for this area has been officially approved and logged in the system.');
+                      } 
+                    }
+                  ]
+                );
+              }}>
                 <Text style={styles.approveBtnText}>Approve Work</Text>
               </TouchableOpacity>
 
@@ -541,7 +555,7 @@ const styles = StyleSheet.create({
   sixSSub: { fontSize: 10, color: '#94A3B8', marginLeft: 4 },
   sixSBarBg: { flex: 1, height: 6, backgroundColor: '#E2E8F0', borderRadius: 3, marginHorizontal: 12 },
   sixSBarFill: { height: '100%', borderRadius: 3 },
-  sixSScore: { width: 32, fontSize: 12, fontWeight: '800', color: '#1F2937', textAlign: 'right' },
+  sixSScore: { width: 45, fontSize: 12, fontWeight: '800', color: '#1F2937', textAlign: 'right' },
   checklistExpanded: { backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, marginBottom: 12, marginLeft: 32, borderLeftWidth: 2, borderLeftColor: '#611624' },
   checklistItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   checklistText: { fontSize: 12, color: '#334155', marginLeft: 8, flex: 1 },

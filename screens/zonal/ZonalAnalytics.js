@@ -8,7 +8,7 @@ import { DataContext } from '../../context/DataContext';
 import { SUB_ZONAL_HEADS } from '../../data/subZonalHeads';
 
 export default function ZonalAnalytics({ onBackToHome }) {
-  const { currentUser, db } = useContext(DataContext);
+  const { currentUser, db, staticData } = useContext(DataContext);
   
   // Real data calculations
   const zoneNumberMatch = currentUser?.data?.zone?.match(/\d+/);
@@ -18,61 +18,76 @@ export default function ZonalAnalytics({ onBackToHome }) {
     return sub.zone === zoneNumber || sub.zone === currentUser?.data?.zone;
   });
   
-  const overallScore = zoneSubmissions.length > 0 ? 
-    Math.round(zoneSubmissions.reduce((acc, sub) => acc + sub.score, 0) / zoneSubmissions.length) : 0;
-    
-  let bestFloor = { name: 'N/A', score: 0 };
-  let lowestFloor = { name: 'N/A', score: 100 };
-  
-  if (zoneSubmissions.length > 0) {
-    zoneSubmissions.forEach(sub => {
-      const head = SUB_ZONAL_HEADS.find(h => h.id === sub.subZonalHeadId);
-      const floorName = head ? head.areasCovered : sub.subZonalHeadId;
-      
-      if (sub.score >= bestFloor.score) { bestFloor = { name: floorName, score: sub.score }; }
-      if (sub.score <= lowestFloor.score) { lowestFloor = { name: floorName, score: sub.score }; }
-    });
-  } else {
-    lowestFloor.score = 0;
-  }
-
-  // Trend data points
-  const recentSubs = [...zoneSubmissions].sort((a, b) => new Date(a.createdAt || a.date) - new Date(b.createdAt || b.date));
-  let trendPoints = [50, 70, 75, 85, 90, 92]; // Fallback
-  if (recentSubs.length > 0) {
-    const last6 = recentSubs.slice(-6);
-    let lastVal = last6[0].score;
-    for(let i=0; i<6; i++) {
-      if (last6[i]) lastVal = last6[i].score;
-      trendPoints[i] = lastVal;
-    }
-  }
-
-  // Deterministic 6S Fluctuation
-  const getSScore = (base, index) => {
-    if (base === 0) return 0;
-    const offsets = [-2, 3, -1, 4, -3, 1];
-    return Math.min(100, Math.max(0, base + offsets[index]));
-  };
-
-  const sixSData = [
-    { label: 'Seiri', sub: 'Sort', score: getSScore(overallScore, 0) },
-    { label: 'Seiton', sub: 'Set In Order', score: getSScore(overallScore, 1) },
-    { label: 'Seiso', sub: 'Shine', score: getSScore(overallScore, 2) },
-    { label: 'Seiketsu', sub: 'Standardize', score: getSScore(overallScore, 3) },
-    { label: 'Shitsuke', sub: 'Sustain', score: getSScore(overallScore, 4) },
-    { label: 'Safety', sub: 'Safety', score: getSScore(overallScore, 5) }
-  ].map(s => ({...s, color: s.score >= 80 ? '#10B981' : (s.score >= 60 ? '#F97316' : '#EF4444')}));
-
   // Individual Sub-Zone calculations
-  const subZonesInZone = SUB_ZONAL_HEADS.filter(szh => szh.zone === (zoneNumber ? 'Zone ' + zoneNumber : currentUser?.data?.zone));
+  const subZonesSource = staticData?.subZonalHeads || [];
+  const subZonesInZone = subZonesSource.filter(szh => szh.zone === (zoneNumber ? 'Zone ' + zoneNumber : currentUser?.data?.zone) || szh.zoneNumber == zoneNumber);
   const uniqueAreasMap = {};
   subZonesInZone.forEach(h => {
-    if(!uniqueAreasMap[h.areasCovered]) {
-      uniqueAreasMap[h.areasCovered] = h;
+    const areaName = h.areasCovered || h.floor || 'Unknown Area';
+    if(!uniqueAreasMap[areaName]) {
+      uniqueAreasMap[areaName] = h;
     }
   });
   const uniqueAreas = Object.values(uniqueAreasMap);
+
+  // Overall Score should average across all sub-zones (0 for those without submission)
+  let totalScoreSum = 0;
+  let sScoreSums = { '1S':0, '2S':0, '3S':0, '4S':0, '5S':0, '6S':0 };
+  let bestFloor = { name: 'N/A', score: -1 };
+  let lowestFloor = { name: 'N/A', score: 101 };
+
+  uniqueAreas.forEach(area => {
+    const latestLog = db.checklistSubmissions
+      .filter(sub => sub.subZonalHeadId === area.id || sub.subZonalHeadId === area._id || sub.subZonalHeadId === area.email)
+      .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))[0];
+    
+    const score = latestLog ? latestLog.score : 0;
+    totalScoreSum += score;
+    
+    ['1S', '2S', '3S', '4S', '5S', '6S'].forEach(s => {
+      sScoreSums[s] += (latestLog && latestLog.scores && latestLog.scores[s]) ? latestLog.scores[s] : score;
+    });
+
+    const areaName = area.areasCovered || area.floor || 'Unknown Area';
+    if (score > bestFloor.score) bestFloor = { name: areaName, score };
+    if (score < lowestFloor.score) lowestFloor = { name: areaName, score };
+  });
+
+  const overallScore = uniqueAreas.length > 0 ? Math.round(totalScoreSum / uniqueAreas.length) : 0;
+  if (bestFloor.score === -1) bestFloor = { name: 'N/A', score: 0 };
+  if (lowestFloor.score === 101) lowestFloor = { name: 'N/A', score: 0 };
+
+  // Trend data points (Last 30 days)
+  const trendPoints = [];
+  const today = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i * 6); 
+    const start = new Date(d); start.setHours(0,0,0,0);
+    const end = new Date(start); end.setDate(end.getDate() + 5); end.setHours(23,59,59,999);
+    
+    const subsInPeriod = zoneSubmissions.filter(s => {
+      const sd = new Date(s.date || s.createdAt);
+      return sd >= start && sd <= end;
+    });
+    
+    let score = 0;
+    if (subsInPeriod.length > 0) {
+      score = Math.round(subsInPeriod.reduce((acc, sub) => acc + sub.score, 0) / subsInPeriod.length);
+    } else if (i < 5 && trendPoints.length > 0) {
+      score = trendPoints[trendPoints.length - 1]; // carry over
+    }
+    trendPoints.push(score);
+  }
+
+  const sixSData = [
+    { label: 'Seiri', sub: 'Sort', score: uniqueAreas.length > 0 ? Math.round(sScoreSums['1S'] / uniqueAreas.length) : 0 },
+    { label: 'Seiton', sub: 'Set In Order', score: uniqueAreas.length > 0 ? Math.round(sScoreSums['2S'] / uniqueAreas.length) : 0 },
+    { label: 'Seiso', sub: 'Shine', score: uniqueAreas.length > 0 ? Math.round(sScoreSums['3S'] / uniqueAreas.length) : 0 },
+    { label: 'Seiketsu', sub: 'Standardize', score: uniqueAreas.length > 0 ? Math.round(sScoreSums['4S'] / uniqueAreas.length) : 0 },
+    { label: 'Shitsuke', sub: 'Sustain', score: uniqueAreas.length > 0 ? Math.round(sScoreSums['5S'] / uniqueAreas.length) : 0 },
+    { label: 'Safety', sub: 'Safety', score: uniqueAreas.length > 0 ? Math.round(sScoreSums['6S'] / uniqueAreas.length) : 0 }
+  ].map(s => ({...s, color: s.score >= 80 ? '#10B981' : (s.score >= 60 ? '#F97316' : '#EF4444')}));
 
   // Report Generation Logic
   const handleGenerateReport = () => {
@@ -90,10 +105,10 @@ export default function ZonalAnalytics({ onBackToHome }) {
   const getSubZoneScores = () => {
     return uniqueAreas.map(item => {
       const latestLog = db.checklistSubmissions
-        .filter(sub => sub.subZonalHeadId === item.id || sub.subZonalHeadId === item.email)
+        .filter(sub => sub.subZonalHeadId === item.id || sub.subZonalHeadId === item._id || sub.subZonalHeadId === item.email)
         .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))[0];
       return {
-        area: item.areasCovered,
+        area: item.areasCovered || item.floor || 'Unknown Area',
         score: latestLog ? latestLog.score : 0
       };
     });
@@ -231,8 +246,8 @@ export default function ZonalAnalytics({ onBackToHome }) {
             <View style={styles.chartGridLine} />
             <View style={styles.chartGridLine} />
             
-            {/* Fake Area Path using a skewed box */}
-            <View style={styles.mockAreaPath} />
+            {/* Fake Area Path using a skewed box connected to overall score */}
+            <View style={[styles.mockAreaPath, { height: `${Math.max(5, overallScore)}%` }]} />
             
             {/* Points driven by data */}
             <View style={[styles.chartPoint, { left: '0%', bottom: `${trendPoints[0]}%` }]} />
@@ -243,11 +258,12 @@ export default function ZonalAnalytics({ onBackToHome }) {
             <View style={[styles.chartPoint, { left: '100%', bottom: `${trendPoints[5]}%` }]} />
 
             <View style={styles.chartXAxis}>
-              <Text style={styles.chartAxisLabel}>20 May</Text>
-              <Text style={styles.chartAxisLabel}>27 May</Text>
-              <Text style={styles.chartAxisLabel}>3 Jun</Text>
-              <Text style={styles.chartAxisLabel}>10 Jun</Text>
-              <Text style={styles.chartAxisLabel}>17 Jun</Text>
+              <Text style={styles.chartAxisLabel}>30d ago</Text>
+              <Text style={styles.chartAxisLabel}>24d ago</Text>
+              <Text style={styles.chartAxisLabel}>18d ago</Text>
+              <Text style={styles.chartAxisLabel}>12d ago</Text>
+              <Text style={styles.chartAxisLabel}>6d ago</Text>
+              <Text style={styles.chartAxisLabel}>Today</Text>
             </View>
           </View>
         </View>
@@ -278,14 +294,15 @@ export default function ZonalAnalytics({ onBackToHome }) {
         ) : (
           uniqueAreas.map((item, index) => {
             const latestLog = db.checklistSubmissions
-              .filter(sub => sub.subZonalHeadId === item.id || sub.subZonalHeadId === item.email)
+              .filter(sub => sub.subZonalHeadId === item.id || sub.subZonalHeadId === item._id || sub.subZonalHeadId === item.email)
               .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))[0];
             const szScore = latestLog ? latestLog.score : 0; 
             const szColor = szScore >= 85 ? '#10B981' : szScore >= 60 ? '#F97316' : '#EF4444';
+            const areaName = item.areasCovered || item.floor || 'Unknown Area';
 
             return (
               <View key={index} style={styles.performanceListItem}>
-                <Text style={styles.performanceFloorName} numberOfLines={2}>{item.areasCovered}</Text>
+                <Text style={styles.performanceFloorName} numberOfLines={2}>{areaName}</Text>
                 <View style={styles.performanceBarBg}>
                   <View style={[styles.performanceBarFill, { width: `${szScore}%`, backgroundColor: szColor }]} />
                 </View>
