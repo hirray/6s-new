@@ -12,7 +12,7 @@ import * as XLSX from 'xlsx';
 
 
 export default function AdminZones({ onNavigate }) {
-  const { db, staticData, zones } = useContext(DataContext);
+  const { db, staticData, zones, approveChecklist } = useContext(DataContext);
   const insets = useSafeAreaInsets();
   const [expandedZone, setExpandedZone] = useState('1');
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,6 +80,28 @@ export default function AdminZones({ onNavigate }) {
     };
   });
 
+  const getPrincipleScore = (sub, principleId) => {
+    if (!sub.latestSub) return 0;
+    
+    const principleNameMap = {
+      '1S': 'Sort',
+      '2S': 'Set In Order',
+      '3S': 'Shine',
+      '4S': 'Standardize',
+      '5S': 'Sustain',
+      '6S': 'Safety'
+    };
+    const principleName = principleNameMap[principleId];
+    const checklistData = getChecklistForUser(sub.fullData, staticData?.checklists || []);
+    const items = checklistData[principleName] || [];
+    
+    if (items.length === 0) return sub.compliance || 0;
+
+    const submissionRemarks = sub.latestSub.remarks || [];
+    const failedCount = items.filter(item => submissionRemarks.some(r => r.task === item)).length;
+    return Math.round(((items.length - failedCount) / items.length) * 100);
+  };
+
   const filteredZones = ZONES_DATA.filter(z => z.name.toLowerCase().includes(searchQuery.toLowerCase()) || z.subZones.some(s => s.name.toLowerCase().includes(searchQuery.toLowerCase())));
 
   const exportPdf = async (zone) => {
@@ -141,7 +163,7 @@ export default function AdminZones({ onNavigate }) {
               </tr>
               ${zone.subZones.map(sub => {
                 const breakdown = ['1S', '2S', '3S', '4S', '5S', '6S'].map(principle => {
-                  const score = sub.latestSub?.scores ? (sub.latestSub.scores[principle] || 0) : 0;
+                  const score = getPrincipleScore(sub, principle);
                   return `${principle}: ${score}%`;
                 }).join('<br/>');
                 
@@ -178,12 +200,12 @@ export default function AdminZones({ onNavigate }) {
         'Pending Concerns': sub.pending,
         'Resolved Concerns': sub.resolved,
         'Compliance Score (%)': sub.compliance,
-        '1S Score': sub.latestSub?.scores?.['1S'] || 0,
-        '2S Score': sub.latestSub?.scores?.['2S'] || 0,
-        '3S Score': sub.latestSub?.scores?.['3S'] || 0,
-        '4S Score': sub.latestSub?.scores?.['4S'] || 0,
-        '5S Score': sub.latestSub?.scores?.['5S'] || 0,
-        '6S Score': sub.latestSub?.scores?.['6S'] || 0,
+        '1S Score': getPrincipleScore(sub, '1S'),
+        '2S Score': getPrincipleScore(sub, '2S'),
+        '3S Score': getPrincipleScore(sub, '3S'),
+        '4S Score': getPrincipleScore(sub, '4S'),
+        '5S Score': getPrincipleScore(sub, '5S'),
+        '6S Score': getPrincipleScore(sub, '6S'),
       }));
 
       const ws = XLSX.utils.json_to_sheet(overviewData);
@@ -248,8 +270,8 @@ export default function AdminZones({ onNavigate }) {
       ? `Analysis: There are ${sub.pending} pending concerns that might negatively affect this score.` 
       : `Analysis: Excellent! This zone has a clean record with 0 pending concerns affecting this principle.`;
 
-    // A mock real-time score for this 'S'
-    const sScore = sub.latestSub?.scores ? (sub.latestSub.scores[principleId] || 80) : 80;
+    // Calculate real-time score for this 'S'
+    const sScore = getPrincipleScore(sub, principleId);
     
     return (
       <View style={styles.detailedChecklistContainer}>
@@ -265,7 +287,7 @@ export default function AdminZones({ onNavigate }) {
 
           return (
             <View key={idx} style={styles.checklistItemRow}>
-              <Ionicons name={isFailed ? "close-circle" : "checkmark-circle"} size={20} color={isFailed ? "#C0182A" : "#1A8C4E"} />
+              <Text style={{ fontSize: 22, color: isFailed ? "#C0182A" : "#6B7280", marginTop: -4 }}>{'\u2022'}</Text>
               <View style={{ flex: 1, marginLeft: 8 }}>
                 <Text style={styles.checklistItemText}>{item}</Text>
                 {isFailed && (
@@ -278,10 +300,6 @@ export default function AdminZones({ onNavigate }) {
           );
         })}
 
-        <View style={styles.analysisBox}>
-          <Ionicons name="analytics" size={18} color="#8C1B2F" style={{marginRight: 6}} />
-          <Text style={styles.analysisText}>{analysisContext}</Text>
-        </View>
       </View>
     );
   };
@@ -402,6 +420,23 @@ export default function AdminZones({ onNavigate }) {
                           <View style={styles.subZoneDetails}>
                             <Text style={styles.subZoneManager}>Manager: {sub.headName}</Text>
                             {render6SPrinciples(sub)}
+                            {sub.latestSub && sub.latestSub.approvalStatus === 'PENDING' && (
+                              <TouchableOpacity 
+                                style={{ backgroundColor: '#4338CA', padding: 12, borderRadius: 8, marginHorizontal: 20, marginBottom: 15, alignItems: 'center' }}
+                                onPress={async () => {
+                                  const success = await approveChecklist(sub.latestSub._id || sub.latestSub.id);
+                                  if(success) alert('Checklist Approved Successfully');
+                                }}
+                              >
+                                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Approve Submission</Text>
+                              </TouchableOpacity>
+                            )}
+                            {sub.latestSub && sub.latestSub.approvalStatus === 'APPROVED' && (
+                              <View style={{ backgroundColor: '#ECFDF5', padding: 12, borderRadius: 8, marginHorizontal: 20, marginBottom: 15, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}>
+                                <Ionicons name="checkmark-circle" size={16} color="#059669" style={{ marginRight: 6 }} />
+                                <Text style={{ color: '#059669', fontWeight: 'bold' }}>Approved by {sub.latestSub.approvedBy || 'Admin'}</Text>
+                              </View>
+                            )}
                           </View>
                         )}
                       </View>

@@ -6,10 +6,10 @@ import { DataContext } from '../context/DataContext';
 
 import ZonalAnalytics from './zonal/ZonalAnalytics';
 import ZonalProfile from './zonal/ZonalProfile';
-import { SUB_ZONAL_HEADS } from '../data/subZonalHeads';
+import { getChecklistForUser } from '../utils/checklistMapper';
 
 export default function ZonalDashboard({ navigation }) {
-  const { currentUser, db, SZH } = useContext(DataContext);
+  const { currentUser, db, staticData } = useContext(DataContext);
   const [activeTab, setActiveTab] = useState('Home');
   const [expandedS, setExpandedS] = useState(null);
 
@@ -24,18 +24,19 @@ export default function ZonalDashboard({ navigation }) {
     { id: 5, area: "Vikram Sarabhai Bhavan" },
     { id: 6, area: "Swami Vivekananda Bhavan" },
     { id: 7, area: "FirePlex" },
-    { id: 8, area: "School of Science / Management" }
+    { id: 8, area: "School of Science" }
   ];
   
   const matchedZone = ZONES_DATA.find(z => z.id === zoneNumber);
   const zoneName = matchedZone ? `Zone ${zoneNumber} - ${matchedZone.area}` : (currentUser?.data?.area || currentUser?.data?.zone || 'Zone');
   
   // Get unique subzones from the main data source for this zone
-  const subZonesInZone = SUB_ZONAL_HEADS.filter(h => h.zone === currentUser?.data?.zone);
+  const subZonesInZone = (staticData?.subZonalHeads || []).filter(h => h.zone === currentUser?.data?.zone);
   const uniqueAreasMap = {};
   subZonesInZone.forEach(h => {
-    if(!uniqueAreasMap[h.areasCovered]) {
-      uniqueAreasMap[h.areasCovered] = h;
+    const area = h.areasCovered || h.floor || h.subZone || 'Unknown Area';
+    if(!uniqueAreasMap[area]) {
+      uniqueAreasMap[area] = { ...h, areasCovered: area };
     }
   });
   const uniqueAreas = Object.values(uniqueAreasMap);
@@ -112,20 +113,31 @@ export default function ZonalDashboard({ navigation }) {
           }
           const statusColor = subZoneStatus === 'Green' ? '#10B981' : subZoneStatus === 'Yellow' ? '#F59E0B' : '#EF4444';
 
-          // Deterministic 6S Fluctuation
-          const getScore = (idx) => {
-            if (baseScore === 0) return 0;
-            const offsets = [-2, 3, -1, 4, -3, 1];
-            return Math.min(100, Math.max(0, baseScore + offsets[idx]));
+          const getPrincipleScore = (principleName) => {
+            if (!latestLog) return 0;
+            const checklistData = getChecklistForUser({ ...item, name: item.name || 'Unassigned', floor: item.areasCovered }, staticData?.checklists || []);
+            const items = checklistData[principleName] || [];
+            if (items.length === 0) return latestLog.score || 0;
+            
+            const submissionRemarks = latestLog.remarks || [];
+            const failedCount = items.filter(task => submissionRemarks.some(r => r.task === task)).length;
+            return Math.round(((items.length - failedCount) / items.length) * 100);
+          };
+
+          const getPrincipleTasks = (principleName) => {
+            const checklistData = getChecklistForUser({ ...item, name: item.name || 'Unassigned', floor: item.areasCovered }, staticData?.checklists || []);
+            let items = checklistData[principleName] || [];
+            if (items.length === 0) items = [`No specific checklist items defined for ${principleName} in this sub-zone.`];
+            return items;
           };
 
           const sCategories = [
-            { id: `${item.id}-1S`, label: 'Seiri', sub: 'Sort', score: getScore(0), tasks: ['Are unneeded items removed from the area?'] },
-            { id: `${item.id}-2S`, label: 'Seiton', sub: 'Set In Order', score: getScore(1), tasks: ['Is everything in its designated place?'] },
-            { id: `${item.id}-3S`, label: 'Seiso', sub: 'Shine', score: getScore(2), tasks: ['Is the area clean and free of debris?'] },
-            { id: `${item.id}-4S`, label: 'Seiketsu', sub: 'Standardize', score: getScore(3), tasks: ['Are standard procedures visible and followed?'] },
-            { id: `${item.id}-5S`, label: 'Shitsuke', sub: 'Sustain', score: getScore(4), tasks: ['Are audits being conducted regularly?'] },
-            { id: `${item.id}-6S`, label: 'Safety', sub: 'Safety', score: getScore(5), tasks: ['Are all safety hazards mitigated?'] },
+            { id: `${item._id || item.id}-1S`, label: 'Seiri', sub: 'Sort', score: getPrincipleScore('Sort'), tasks: getPrincipleTasks('Sort') },
+            { id: `${item._id || item.id}-2S`, label: 'Seiton', sub: 'Set In Order', score: getPrincipleScore('Set In Order'), tasks: getPrincipleTasks('Set In Order') },
+            { id: `${item._id || item.id}-3S`, label: 'Seiso', sub: 'Shine', score: getPrincipleScore('Shine'), tasks: getPrincipleTasks('Shine') },
+            { id: `${item._id || item.id}-4S`, label: 'Seiketsu', sub: 'Standardize', score: getPrincipleScore('Standardize'), tasks: getPrincipleTasks('Standardize') },
+            { id: `${item._id || item.id}-5S`, label: 'Shitsuke', sub: 'Sustain', score: getPrincipleScore('Sustain'), tasks: getPrincipleTasks('Sustain') },
+            { id: `${item._id || item.id}-6S`, label: 'Safety', sub: 'Safety', score: getPrincipleScore('Safety'), tasks: getPrincipleTasks('Safety') },
           ];
 
           const floorConcerns = db.complaints.filter(c => c.zone === item.zone && c.subZone === item.areasCovered);
@@ -139,56 +151,60 @@ export default function ZonalDashboard({ navigation }) {
                 </View>
               </View>
               
-              <View style={styles.sixSContainer}>
-                {sCategories.map((sCat, idx) => {
-                  const sColor = sCat.score >= 80 ? '#10B981' : (sCat.score >= 60 ? '#F97316' : '#EF4444');
-                  return (
-                    <View key={sCat.id}>
-                      <View style={styles.sixSRow}>
-                        <View style={styles.sixSLabelContainer}>
-                          <Text style={styles.sixSMain}>{sCat.label}</Text>
-                          <Text style={styles.sixSSub}>({sCat.sub})</Text>
-                        </View>
-                        <View style={styles.sixSBarBg}>
-                          <View style={[styles.sixSBarFill, { width: `${sCat.score}%`, backgroundColor: sColor }]} />
-                        </View>
-                        <Text style={styles.sixSScore}>{sCat.score}%</Text>
+              {latestLog && latestLog.approvalStatus === 'APPROVED' ? (
+                <View style={{ backgroundColor: '#ECFDF5', padding: 16, borderRadius: 12, marginHorizontal: 16, marginBottom: 16, alignItems: 'center', borderWidth: 1, borderColor: '#10B981' }}>
+                  <Ionicons name="checkmark-circle" size={32} color="#10B981" style={{ marginBottom: 8 }} />
+                  <Text style={{ color: '#065F46', fontWeight: 'bold', fontSize: 16 }}>Cleared / Approved by Admin</Text>
+                  <Text style={{ color: '#047857', fontSize: 12, marginTop: 4 }}>This sub-zone's checklist has been verified.</Text>
+                </View>
+              ) : (
+                <View style={styles.sixSContainer}>
+                  {sCategories.map((sCat, idx) => {
+                    const sColor = sCat.score >= 80 ? '#10B981' : (sCat.score >= 60 ? '#F97316' : '#EF4444');
+                    return (
+                      <View key={sCat.id}>
+                        <TouchableOpacity 
+                          style={styles.sixSRow} 
+                          activeOpacity={0.7}
+                          onPress={() => setExpandedS(expandedS === sCat.id ? null : sCat.id)}
+                        >
+                          <View style={styles.sixSLabelContainer}>
+                            <Text style={styles.sixSMain}>{sCat.label}</Text>
+                            <Text style={styles.sixSSub}>({sCat.sub})</Text>
+                          </View>
+                          <View style={styles.sixSBarBg}>
+                            <View style={[styles.sixSBarFill, { width: `${sCat.score}%`, backgroundColor: sColor }]} />
+                          </View>
+                          <Text style={styles.sixSScore}>{sCat.score}%</Text>
+                        </TouchableOpacity>
+
+                        {expandedS === sCat.id && (
+                          <View style={styles.checklistExpanded}>
+                            {sCat.tasks.map((task, tidx) => {
+                              const submissionRemarks = latestLog?.remarks || [];
+                              const failedItem = submissionRemarks.find(r => r.task === task);
+                              const isFailed = !!failedItem;
+                              return (
+                                <View key={tidx} style={styles.checklistItem}>
+                                  <Text style={{ fontSize: 22, color: isFailed ? "#C0182A" : "#6B7280", marginTop: -4 }}>{'\u2022'}</Text>
+                                  <View style={{ flex: 1, marginLeft: 8 }}>
+                                    <Text style={styles.checklistText}>{task}</Text>
+                                    {isFailed && (
+                                      <Text style={{ fontSize: 11, color: '#991B1B', marginTop: 2, fontStyle: 'italic' }}>
+                                        Remark: {failedItem.comment}
+                                      </Text>
+                                    )}
+                                  </View>
+                                </View>
+                              );
+                            })}
+                          </View>
+                        )}
                       </View>
-
-                      {expandedS === sCat.id && (
-                        <View style={styles.checklistExpanded}>
-                          {sCat.tasks.map((task, tidx) => (
-                            <View key={tidx} style={styles.checklistItem}>
-                              <Ionicons name="checkmark-circle" size={18} color={sCat.score > 70 ? '#10B981' : '#F97316'} />
-                              <Text style={styles.checklistText}>{task}</Text>
-                            </View>
-                          ))}
-                          <Text style={styles.checklistSummaryText}>Completed: {sCat.score}% (Latest Data)</Text>
-                        </View>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-
-              <TouchableOpacity style={styles.approveBtn} onPress={() => {
-                Alert.alert(
-                  'Approve Work',
-                  `Are you sure you want to approve the latest checklist submission for ${item.areasCovered}?`,
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    { 
-                      text: 'Approve', 
-                      onPress: () => {
-                        // Normally you would call approveChecklist(latestLog._id) here
-                        Alert.alert('Success', 'Work for this area has been officially approved and logged in the system.');
-                      } 
-                    }
-                  ]
-                );
-              }}>
-                <Text style={styles.approveBtnText}>Approve Work</Text>
-              </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
 
               <View style={styles.sectionHeaderRowInternal}>
                 <Text style={styles.sectionTitle}>Recent Concerns</Text>

@@ -288,11 +288,12 @@ export const DataProvider = ({ children }) => {
         zone: zone ? zone.toString() : 'Unknown',
         score: score || 0,
         date: new Date().toISOString(),
-        remarks: remarks
+        remarks: remarks,
+        approvalStatus: 'PENDING'
       });
       setDb(prev => ({
         ...prev,
-        checklistSubmissions: [res.data, ...prev.checklistSubmissions]
+        checklistSubmissions: [{ ...res.data, approvalStatus: 'PENDING' }, ...prev.checklistSubmissions]
       }));
     } catch (error) {
       console.error('Error submitting checklist', error);
@@ -310,7 +311,7 @@ export const DataProvider = ({ children }) => {
       setDb(prev => ({
         ...prev,
         checklistSubmissions: prev.checklistSubmissions.map(sub => 
-          (sub.id === submissionId || sub._id === submissionId) ? { ...res.data, id: res.data._id } : sub
+          (sub.id === submissionId || sub._id === submissionId) ? { ...res.data, id: res.data._id, approvalStatus: 'APPROVED', approvedAt: new Date().toISOString() } : sub
         )
       }));
       return true;

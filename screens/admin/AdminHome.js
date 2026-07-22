@@ -51,6 +51,8 @@ const AnimatedMarker = ({ marker, onPress }) => {
         { 
           transform: [{ scale: scaleAnim }],
           opacity: opacityAnim,
+          borderColor: getMarkerColor(marker.status),
+          backgroundColor: getMarkerColor(marker.status) + '33'
         }
       ]} />
       <View style={[styles.markerCircle, { backgroundColor: getMarkerColor(marker.status) }]}>
@@ -234,7 +236,7 @@ export default function AdminHome({ onNavigate }) {
 
       <View style={styles.mapCard}>
         <View style={styles.mapCardHeader}>
-          <Text style={styles.mapCardTitle}>Live Campus Zone Map — Annexure I</Text>
+          <Text style={styles.mapCardTitle}>Real-Time Campus Zone Map</Text>
           <Text style={styles.mapCardSubtitle}>Pinch to zoom in and out. Drag to pan.</Text>
         </View>
 
@@ -270,25 +272,25 @@ export default function AdminHome({ onNavigate }) {
 
         <View style={styles.mapCardDivider} />
 
-        <View style={styles.mapLegend}>
-          <View style={styles.legendRow}>
-            <View style={[styles.legendDot, { backgroundColor: getMarkerColor('Green') }]} />
-            <Text style={styles.legendText}>On time / within 7-day review</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', backgroundColor: '#F9FAFB', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#F3F4F6', marginTop: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 8 }}>
+            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: getMarkerColor('Green'), marginRight: 8 }} />
+            <Text style={{ fontSize: 12, color: '#374151', fontWeight: '500' }}>Compliant / Active (0–48h)</Text>
           </View>
-          <View style={styles.legendRow}>
-            <View style={[styles.legendDot, { backgroundColor: getMarkerColor('Yellow') }]} />
-            <Text style={styles.legendText}>1 day late / overdue review</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 8 }}>
+            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: getMarkerColor('Yellow'), marginRight: 8 }} />
+            <Text style={{ fontSize: 12, color: '#374151', fontWeight: '500' }}>Attention Needed / Pending (48–72h)</Text>
           </View>
-          <View style={styles.legendRow}>
-            <View style={[styles.legendDot, { backgroundColor: getMarkerColor('Red') }]} />
-            <Text style={styles.legendText}>2+ days late / severely overdue</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: getMarkerColor('Red'), marginRight: 8 }} />
+            <Text style={{ fontSize: 12, color: '#374151', fontWeight: '500' }}>Critical / Overdue (72h+)</Text>
           </View>
         </View>
       </View>
       
       {/* Zone-wise Details Table */}
       <View style={styles.tableCard}>
-        <Text style={styles.tableTitle}>Zone-wise Details</Text>
+        <Text style={styles.tableTitle}>Zone-Wise Details</Text>
         <View style={styles.tableHeaderRow}>
           <Text style={[styles.thText, {flex: 3.5}]}>Zone</Text>
           <Text style={[styles.thText, {flex: 3.5}]}>Zonal Head</Text>
@@ -357,8 +359,8 @@ const styles = StyleSheet.create({
   legendRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   legendDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
   legendText: { fontSize: 14, color: '#374151' },
-  markerWrapper: { position: 'absolute', width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -22, marginTop: -22 }, // Center based on top/left
-  markerRing: { position: 'absolute', width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(192, 24, 42, 0.8)', backgroundColor: 'rgba(192, 24, 42, 0.2)' },
+  markerWrapper: { position: 'absolute', width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -22, marginTop: -22 },
+  markerRing: { position: 'absolute', width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderStyle: 'dashed' },
   markerCircle: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.8, shadowRadius: 2, elevation: 3 },
   markerText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 11 },
   
