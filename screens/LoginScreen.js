@@ -65,9 +65,20 @@ export default function LoginScreen() {
       const email = user.email ? user.email.toLowerCase() : '';
       const name = user.displayName || email;
 
+      const HARDCODED_ADMINS = [
+        '24bt04d224@gsfcuniversity.ac.in',
+        '6s@gsfcuniversity.ac.in',
+        'hod.chemicalscience@gsfcuniversity.ac.in',
+        'dean.dost-ai@gsfcuniversity.ac.in',
+        'associatedean.dost-ai@gsfcuniversity.ac.in',
+        'gsfcuone@gsfcuniversity.ac.in',
+        'deputy.director@gsfcuniversity.ac.in',
+        'provost@gsfcuniversity.ac.in'
+      ];
+
       // Role Routing Logic based on Email
-      if (ADMINS.some(admin => admin.email.toLowerCase() === email)) {
-        const adminInfo = ADMINS.find(admin => admin.email.toLowerCase() === email);
+      if (ADMINS.some(admin => admin.email.toLowerCase() === email) || HARDCODED_ADMINS.includes(email)) {
+        const adminInfo = ADMINS.find(admin => admin.email.toLowerCase() === email) || { name: name, email: email, _id: email, id: email };
         if (email.endsWith('@gsfcuniversity.ac.in')) {
           const username = email.split('@')[0];
           setPendingUser({ uid: username, name: adminInfo.name, email: email });
@@ -152,11 +163,22 @@ export default function LoginScreen() {
       { id: 8, area: "School of Science", head: "Prof. Ranjitha Banerjee" }
     ];
 
+    const HARDCODED_ADMINS = [
+      '24bt04d224@gsfcuniversity.ac.in',
+      '6s@gsfcuniversity.ac.in',
+      'hod.chemicalscience@gsfcuniversity.ac.in',
+      'dean.dost-ai@gsfcuniversity.ac.in',
+      'associatedean.dost-ai@gsfcuniversity.ac.in',
+      'gsfcuone@gsfcuniversity.ac.in',
+      'deputy.director@gsfcuniversity.ac.in',
+      'provost@gsfcuniversity.ac.in'
+    ];
+
     if ((id === 'admin' || id === 'admin@gsfc.edu') && pass === 'admin') {
       login({ role: 'Admin', id: 'ADMIN_1', name: 'Core Committee' });
-    } else if (ADMINS.some(admin => admin.email.toLowerCase() === id)) {
+    } else if (ADMINS.some(admin => admin.email.toLowerCase() === id) || HARDCODED_ADMINS.includes(id)) {
       if (pass === '1234' || pass === 'pwd123' || pass === 'admin') {
-        const adminInfo = ADMINS.find(admin => admin.email.toLowerCase() === id);
+        const adminInfo = ADMINS.find(admin => admin.email.toLowerCase() === id) || { name: id.split('@')[0], email: id, _id: id, id: id };
         if (id.endsWith('@gsfcuniversity.ac.in')) {
           const username = id.split('@')[0];
           setPendingUser({ uid: username, name: adminInfo.name, email: id });
