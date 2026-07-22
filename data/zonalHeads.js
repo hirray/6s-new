@@ -6,5 +6,5 @@ export const ZONAL_HEADS = [
   { id: 'mayank.sharma@gsfcuniversity.ac.in', name: 'Dr. Mayank Sharma', email: 'mayank.sharma@gsfcuniversity.ac.in', zoneNumber: '5', area: 'Vikram Sarabhai Bhavan', zone: 'Zone 5' },
   { id: 'akhilesh.prajapati@gsfcuniversity.ac.in', name: 'Dr. Akhilesh Prajapati', email: 'akhilesh.prajapati@gsfcuniversity.ac.in', zoneNumber: '6', area: 'Swami Vivekananda Bhavan', zone: 'Zone 6' },
   { id: 'a.srikrishnan@gsfcuniversity.ac.in', name: 'Mr. A. Srikrishnan', email: 'a.srikrishnan@gsfcuniversity.ac.in', zoneNumber: '7', area: 'FirePlex', zone: 'Zone 7' },
-  { id: 'ranjita.banerjee@gsfcuniversity.ac.in', name: 'Prof. Ranjitha Banerjee', email: 'ranjita.banerjee@gsfcuniversity.ac.in', zoneNumber: '8', area: 'School of Science & School of Management Studies & Liberal Arts', zone: 'Zone 8' },
+  { id: 'ranjita.banerjee@gsfcuniversity.ac.in', name: 'Prof. Ranjitha Banerjee', email: 'ranjita.banerjee@gsfcuniversity.ac.in', zoneNumber: '8', area: 'School of Science', zone: 'Zone 8' },
 ];

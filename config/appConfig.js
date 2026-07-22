@@ -6,7 +6,7 @@ export const APP_ZONES = [
   { id: '5', name: 'Zone 5 – Vikram Sarabhai Bhavan', color: '#1A8C4E', top: '55%', left: '42%', width: 110, height: 80, status: 'Green', score: 95 },
   { id: '6', name: 'Zone 6 – Swami Vivekananda Bhavan', color: '#C0182A', top: '25%', left: '52%', width: 100, height: 90, status: 'Red', score: 54 },
   { id: '7', name: 'Zone 7 – FirePlex', color: '#B07D10', top: '40%', left: '22%', width: 80, height: 60, status: 'Yellow', score: 72 },
-  { id: '8', name: 'Zone 8 – School of Science / Management', color: '#1A8C4E', top: '72%', left: '75%', width: 100, height: 80, status: 'Green', score: 91 },
+  { id: '8', name: 'Zone 8 – School of Science', color: '#1A8C4E', top: '72%', left: '75%', width: 100, height: 80, status: 'Green', score: 91 },
 ];
 
 export const APP_SUBZONES = [

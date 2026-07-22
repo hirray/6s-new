@@ -149,7 +149,7 @@ export default function LoginScreen() {
       { id: 5, area: "Vikram Sarabhai Bhavan", head: "Dr. Mayank Sharma" },
       { id: 6, area: "Swami Vivekananda Bhavan", head: "Dr. Akhilesh Prajapati" },
       { id: 7, area: "FirePlex", head: "Mr. A. Srikrishnan" },
-      { id: 8, area: "School of Science / Management", head: "Prof. Ranjitha Banerjee" }
+      { id: 8, area: "School of Science", head: "Prof. Ranjitha Banerjee" }
     ];
 
     if ((id === 'admin' || id === 'admin@gsfc.edu') && pass === 'admin') {

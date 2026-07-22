@@ -128,9 +128,25 @@ export default function SubZonalAudit() {
               <Ionicons name="checkmark-circle" size={40} color="#10B981" />
             </View>
             <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#111827', marginBottom: 8 }}>Inspection Up to Date</Text>
-            <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center' }}>
+            <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 12 }}>
               Work already done at {formattedLastSubDate}
             </Text>
+
+            {lastSub?.approvalStatus === 'APPROVED' ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#ECFDF5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#10B981' }}>
+                <Ionicons name="shield-checkmark" size={14} color="#059669" style={{ marginRight: 6 }} />
+                <Text style={{ color: '#059669', fontSize: 12, fontWeight: 'bold' }}>
+                  Approved by {lastSub.approvedBy || 'Admin'}
+                </Text>
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#F59E0B' }}>
+                <Ionicons name="time" size={14} color="#D97706" style={{ marginRight: 6 }} />
+                <Text style={{ color: '#D97706', fontSize: 12, fontWeight: 'bold' }}>
+                  Pending Admin Approval
+                </Text>
+              </View>
+            )}
           </View>
         ) : (
           <View style={styles.checklistContainer}>
